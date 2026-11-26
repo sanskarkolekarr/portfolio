@@ -25,8 +25,8 @@ const ANNOTATIONS = [
     headPath: "M 418 228 L 434 234 L 427 218",
     // Mobile placement + hand-drawn arrow in 390x780 viewBox
     mobilePos: "left-5 top-[11dvh] text-left max-w-[43%]",
-    mobileLinePath: "M 105 160 C 122 192, 140 212, 160 232",
-    mobileHeadPath: "M 149 230 L 162 234 L 157 221",
+    mobileLinePath: "M 105 162 C 124 198, 144 224, 166 250",
+    mobileHeadPath: "M 155 247 L 168 252 L 163 238",
   },
   {
     id: "builder",
@@ -36,8 +36,8 @@ const ANNOTATIONS = [
     linePath: "M 922 195 C 860 182, 812 204, 766 244",
     headPath: "M 780 241 L 764 246 L 772 230",
     mobilePos: "right-5 top-[11dvh] text-right max-w-[43%]",
-    mobileLinePath: "M 285 160 C 268 192, 250 212, 230 232",
-    mobileHeadPath: "M 241 230 L 228 234 L 233 221",
+    mobileLinePath: "M 285 162 C 266 198, 246 224, 224 250",
+    mobileHeadPath: "M 235 247 L 222 252 L 227 238",
   },
   {
     id: "curious",
@@ -47,8 +47,8 @@ const ANNOTATIONS = [
     linePath: "M 285 570 C 345 552, 392 505, 438 456",
     headPath: "M 424 461 L 440 454 L 434 470",
     mobilePos: "left-5 bottom-[9dvh] text-left max-w-[44%]",
-    mobileLinePath: "M 98 585 C 110 538, 130 500, 154 462",
-    mobileHeadPath: "M 143 468 L 156 460 L 153 475",
+    mobileLinePath: "M 98 582 C 112 530, 134 486, 158 446",
+    mobileHeadPath: "M 147 452 L 160 444 L 157 460",
   },
   {
     id: "beyond",
@@ -58,8 +58,8 @@ const ANNOTATIONS = [
     linePath: "M 915 568 C 855 550, 808 504, 762 456",
     headPath: "M 776 460 L 760 454 L 766 470",
     mobilePos: "right-5 bottom-[9dvh] text-right max-w-[44%]",
-    mobileLinePath: "M 292 585 C 280 538, 260 500, 236 462",
-    mobileHeadPath: "M 247 468 L 234 460 L 237 475",
+    mobileLinePath: "M 292 582 C 278 530, 256 486, 232 446",
+    mobileHeadPath: "M 243 452 L 230 444 L 233 460",
   },
 ] as const;
 
@@ -287,14 +287,14 @@ export function HeroSection() {
             0.55,
           )
           .to(
-            mobilePortraitRef.current,
-            { opacity: 1, duration: 0.5, ease: "power1.inOut" },
-            0.25,
+            bgLayerRef.current,
+            { opacity: 0, duration: 0.55, ease: "power1.inOut" },
+            0.05,
           )
           .to(
-            bgLayerRef.current,
-            { opacity: 0, duration: 0.75, ease: "power1.inOut" },
-            0.3,
+            mobilePortraitRef.current,
+            { opacity: 1, duration: 0.55, ease: "power1.inOut" },
+            0.6,
           );
 
         // SCENE 2 — Full unclipped portrait centers cleanly between top and bottom annotations
@@ -640,50 +640,49 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Bottom Metadata Strip */}
-        <footer
-          ref={footerRef}
-          className="animate-rise-3 relative z-30 flex flex-col gap-4 pt-2 sm:gap-6 sm:pt-4 md:flex-row md:items-end md:justify-between"
-        >
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 md:flex md:items-stretch md:gap-0">
-            <div className="md:border-r md:border-cream/15 md:pr-8 lg:pr-12">
-              <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
-                {identity.basedInLabel}
-              </p>
-              <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
-                {identity.city}
-              </p>
+        {/* Bottom Metadata Strip (animate-rise-3 on inner wrapper so GSAP opacity isn't overridden by CSS animation fill) */}
+        <footer ref={footerRef} className="relative z-30 pt-2 sm:pt-4">
+          <div className="animate-rise-3 flex flex-col gap-4 sm:gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 md:flex md:items-stretch md:gap-0">
+              <div className="md:border-r md:border-cream/15 md:pr-8 lg:pr-12">
+                <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
+                  {identity.basedInLabel}
+                </p>
+                <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
+                  {identity.city}
+                </p>
+              </div>
+
+              <div className="md:border-r md:border-cream/15 md:px-8 lg:px-12">
+                <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
+                  {identity.currentlyLabel}
+                </p>
+                <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
+                  {identity.currentlyValue}
+                </p>
+              </div>
+
+              <div className="col-span-2 sm:col-span-1 md:pl-8 lg:pl-12">
+                <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
+                  {identity.interestedInLabel}
+                </p>
+                <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
+                  {identity.interestedInValue}
+                </p>
+              </div>
             </div>
 
-            <div className="md:border-r md:border-cream/15 md:px-8 lg:px-12">
-              <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
-                {identity.currentlyLabel}
-              </p>
-              <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
-                {identity.currentlyValue}
-              </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={scrollToNext}
+                aria-label="Scroll to The Business Side"
+                className="group flex h-20 w-20 cursor-pointer items-center justify-center gap-1 rounded-full border border-cream/35 bg-obsidian/30 font-mono text-[10px] font-normal uppercase tracking-[0.14em] text-cream backdrop-blur-xs transition-all duration-300 hover:scale-105 hover:border-cream hover:bg-cream hover:text-obsidian sm:h-24 sm:w-24"
+              >
+                <span>SCROLL</span>
+                <ArrowDownLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:translate-y-0.5" />
+              </button>
             </div>
-
-            <div className="col-span-2 sm:col-span-1 md:pl-8 lg:pl-12">
-              <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
-                {identity.interestedInLabel}
-              </p>
-              <p className="mt-1 font-sans text-xs font-normal text-cream/95 sm:text-sm">
-                {identity.interestedInValue}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={scrollToNext}
-              aria-label="Scroll to The Business Side"
-              className="group flex h-20 w-20 cursor-pointer items-center justify-center gap-1 rounded-full border border-cream/35 bg-obsidian/30 font-mono text-[10px] font-normal uppercase tracking-[0.14em] text-cream backdrop-blur-xs transition-all duration-300 hover:scale-105 hover:border-cream hover:bg-cream hover:text-obsidian sm:h-24 sm:w-24"
-            >
-              <span>SCROLL</span>
-              <ArrowDownLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:translate-y-0.5" />
-            </button>
           </div>
         </footer>
       </section>
