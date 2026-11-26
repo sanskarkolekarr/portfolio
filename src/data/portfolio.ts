@@ -12,7 +12,6 @@ export const portfolioData = {
     interestedInLabel: "INTERESTED IN",
     interestedInValue: "AI · Sales · Business Systems",
     timezone: "Asia/Kolkata",
-    email: "sanskar@example.com",
   },
 
   meta: {

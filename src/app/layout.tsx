@@ -23,17 +23,17 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sanskar.biz";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
   title: portfolioData.identity.fullName,
   description: portfolioData.meta.description,
   openGraph: {
+    url: siteUrl,
     title: portfolioData.identity.fullName,
     siteName: portfolioData.identity.fullName,
     description: portfolioData.meta.description,
