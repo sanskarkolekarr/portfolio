@@ -104,16 +104,35 @@ export function HeroSection() {
         });
       };
 
+      const getPortraitCenter = (px: number, py: number) => {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const iw = 1672;
+        const ih = 941;
+        const coverScale = Math.max(vw / iw, vh / ih);
+        const rw = iw * coverScale;
+        const rh = ih * coverScale;
+        const ox = (vw - rw) * px;
+        const oy = (vh - rh) * py;
+        const cx = ox + 0.7506 * rw;
+        const cy = oy + 0.46 * rh;
+        return { vw, vh, cx, cy };
+      };
+
       const mm = gsap.matchMedia();
       cleanup = () => mm.revert();
 
       // ─── Desktop & Tablet (>= 768px) ────────────────────────────────
       mm.add("(min-width: 768px)", () => {
+        const isLg = window.innerWidth >= 1024;
+        const { vw, vh, cx, cy } = getPortraitCenter(isLg ? 1.0 : 0.78, 0.5);
+
         gsap.set(portraitLayerRef.current, {
           opacity: 0,
-          x: "22vw",
-          y: "3vh",
-          scale: 1.14,
+          x: 0,
+          y: 0,
+          scale: 1,
+          transformOrigin: `${cx}px ${cy}px`,
         });
         gsap.set(introLabelRef.current, { opacity: 0, y: 8 });
         desktopArrowRefs.current.forEach(prepareStroke);
@@ -152,11 +171,11 @@ export function HeroSection() {
             { pointerEvents: "none" },
             0.6,
           )
-          // Crossfade from full hero background to isolated portrait layer at right-side position
+          // Crossfade from full hero background to pixel-matched isolated portrait layer
           .to(
             portraitLayerRef.current,
-            { opacity: 1, duration: 0.5, ease: "power1.inOut" },
-            0.25,
+            { opacity: 1, duration: 0.45, ease: "power1.inOut" },
+            0.2,
           )
           .to(
             bgLayerRef.current,
@@ -168,9 +187,9 @@ export function HeroSection() {
         tl.to(
           portraitLayerRef.current,
           {
-            x: 0,
-            y: "1vh",
-            scale: 0.86,
+            x: vw * 0.5 - cx,
+            y: vh * 0.51 - cy,
+            scale: 0.78,
             duration: 1.5,
             ease: "power2.inOut",
           },
@@ -208,11 +227,14 @@ export function HeroSection() {
 
       // ─── Mobile (< 768px) ───────────────────────────────────────────
       mm.add("(max-width: 767px)", () => {
+        const { vw, vh, cx, cy } = getPortraitCenter(0.72, 0.2);
+
         gsap.set(portraitLayerRef.current, {
           opacity: 0,
-          x: "10vw",
-          y: "0vh",
-          scale: 1.05,
+          x: 0,
+          y: 0,
+          scale: 1,
+          transformOrigin: `${cx}px ${cy}px`,
         });
         gsap.set(introLabelRef.current, { opacity: 0, y: 6 });
         mobileNoteRefs.current.forEach((n) => gsap.set(n, { opacity: 0, y: 12 }));
@@ -252,7 +274,7 @@ export function HeroSection() {
           .to(
             portraitLayerRef.current,
             { opacity: 1, duration: 0.45, ease: "power1.inOut" },
-            0.22,
+            0.2,
           )
           .to(
             bgLayerRef.current,
@@ -264,9 +286,9 @@ export function HeroSection() {
         tl.to(
           portraitLayerRef.current,
           {
-            x: 0,
-            y: "-17vh",
-            scale: 0.64,
+            x: vw * 0.5 - cx,
+            y: vh * 0.34 - cy,
+            scale: 0.56,
             duration: 1.3,
             ease: "power2.inOut",
           },
@@ -327,21 +349,19 @@ export function HeroSection() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e]/85 via-transparent to-[#0e0e0e]/45" />
         </div>
 
-        {/* Isolated Transparent Portrait Layer (Crossfades in & moves to center in Scene 2) */}
+        {/* Isolated Transparent Portrait Layer (Pixel-matched 1672x941 overlay, moves to center in Scene 2) */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden"
+          className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
         >
-          <div
-            ref={portraitLayerRef}
-            className="relative h-[62dvh] w-[56dvh] max-h-[600px] max-w-[92vw] opacity-0 md:h-[68vh] md:w-[61vh]"
-          >
+          <div ref={portraitLayerRef} className="relative h-full w-full opacity-0">
             <Image
               src="/hero-portrait-cutout.png"
               alt=""
               fill
-              sizes="(max-width: 767px) 85vw, 600px"
-              className="object-contain grayscale contrast-[1.04]"
+              priority
+              sizes="100vw"
+              className="object-cover object-[72%_20%] sm:object-[78%_center] lg:object-right grayscale contrast-[1.04]"
             />
           </div>
         </div>
