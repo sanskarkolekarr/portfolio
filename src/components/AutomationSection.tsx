@@ -105,9 +105,9 @@ export function AutomationSection() {
     return () => { gsapCtx?.revert(); };
   }, []);
 
-  /* ─── Laptop dimensions (responsive) ──────────────────────────── */
-  const LW = "min(600px, 92vw)";
-  const LH = "min(380px, 60vw)";
+  /* ─── Laptop dimensions (responsive, cinematic desktop scale) ─── */
+  const LW = "min(980px, 92vw, 114vh)";
+  const LH = "min(620px, 60vw, 72vh)";
 
   return (
     <section
@@ -237,7 +237,7 @@ export function AutomationSection() {
                     />
                   ))}
                   <span
-                    style={{ marginLeft: "auto", ...mono, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: dim(0.28) }}
+                    style={{ marginLeft: "auto", ...mono, fontSize: "clamp(8px, 0.9vw, 11px)", letterSpacing: "0.14em", textTransform: "uppercase", color: dim(0.32) }}
                   >
                     Automation Studio
                   </span>
@@ -252,15 +252,15 @@ export function AutomationSection() {
                     style={{
                       width: "56%",
                       borderRight: `1px solid ${dim(0.055)}`,
-                      padding: "10px 10px 8px",
+                      padding: "clamp(10px, 1.8vw, 20px)",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 8,
+                      gap: 10,
                       opacity: 0,
                       flexShrink: 0,
                     }}
                   >
-                    <span style={{ ...mono, fontSize: 7, letterSpacing: "0.18em", textTransform: "uppercase", color: dim(0.28) }}>
+                    <span style={{ ...mono, fontSize: "clamp(7px, 0.8vw, 10px)", letterSpacing: "0.2em", textTransform: "uppercase", color: dim(0.32) }}>
                       Workflow
                     </span>
 
@@ -275,7 +275,7 @@ export function AutomationSection() {
                               display: "flex",
                               flexDirection: "column",
                               alignItems: "center",
-                              gap: 4,
+                              gap: 6,
                               opacity: 0,
                               transform: "scale(0.72)",
                               flexShrink: 0,
@@ -283,21 +283,21 @@ export function AutomationSection() {
                           >
                             <div
                               style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 7,
-                                border: `1px solid ${dim(0.18)}`,
+                                width: "clamp(28px, 3.8vw, 48px)",
+                                height: "clamp(28px, 3.8vw, 48px)",
+                                borderRadius: 9,
+                                border: `1px solid ${dim(0.2)}`,
                                 background: "rgba(255,255,255,0.045)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: 12,
-                                color: dim(0.65),
+                                fontSize: "clamp(11px, 1.4vw, 17px)",
+                                color: dim(0.72),
                               }}
                             >
                               {node.icon}
                             </div>
-                            <span style={{ ...mono, fontSize: 6.5, color: dim(0.38), textAlign: "center", whiteSpace: "nowrap" }}>
+                            <span style={{ ...mono, fontSize: "clamp(6.5px, 0.78vw, 10px)", color: dim(0.45), textAlign: "center", whiteSpace: "nowrap" }}>
                               {node.label}
                             </span>
                           </div>,
@@ -310,10 +310,10 @@ export function AutomationSection() {
                               style={{
                                 flex: 1,
                                 height: 1,
-                                background: `linear-gradient(to right, ${dim(0.3)}, ${dim(0.12)})`,
+                                background: `linear-gradient(to right, ${dim(0.35)}, ${dim(0.14)})`,
                                 transform: "scaleX(0)",
                                 transformOrigin: "left center",
-                                marginBottom: 15,
+                                marginBottom: 18,
                                 minWidth: 4,
                               }}
                             />,
@@ -329,13 +329,13 @@ export function AutomationSection() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 5,
+                        gap: 6,
                         opacity: 0,
                         transform: "scale(0.85)",
                       }}
                     >
-                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: dim(0.45) }} />
-                      <span style={{ ...mono, fontSize: 7, letterSpacing: "0.1em", color: dim(0.35) }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dim(0.55) }} />
+                      <span style={{ ...mono, fontSize: "clamp(7px, 0.8vw, 10px)", letterSpacing: "0.12em", color: dim(0.42) }}>
                         Workflow completed
                       </span>
                     </div>
@@ -346,34 +346,34 @@ export function AutomationSection() {
                     {/* Chat header */}
                     <div
                       style={{
-                        padding: "7px 10px",
+                        padding: "clamp(7px, 1.1vw, 13px) clamp(10px, 1.4vw, 16px)",
                         borderBottom: `1px solid ${dim(0.055)}`,
                         display: "flex",
                         alignItems: "center",
-                        gap: 7,
+                        gap: 9,
                         flexShrink: 0,
                       }}
                     >
                       <div
                         style={{
-                          width: 20,
-                          height: 20,
+                          width: "clamp(20px, 2.4vw, 30px)",
+                          height: "clamp(20px, 2.4vw, 30px)",
                           borderRadius: "50%",
                           background: dim(0.08),
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           ...mono,
-                          fontSize: 9,
-                          color: dim(0.5),
+                          fontSize: "clamp(9px, 1vw, 12px)",
+                          color: dim(0.55),
                           flexShrink: 0,
                         }}
                       >
                         W
                       </div>
                       <div>
-                        <p style={{ ...mono, fontSize: 8, color: dim(0.65), margin: 0 }}>Customer Chat</p>
-                        <p style={{ ...mono, fontSize: 6.5, color: dim(0.28), margin: 0 }}>Automated · Simulated</p>
+                        <p style={{ ...mono, fontSize: "clamp(8px, 0.95vw, 11.5px)", color: dim(0.75), margin: 0 }}>Customer Chat</p>
+                        <p style={{ ...mono, fontSize: "clamp(6.5px, 0.75vw, 9px)", color: dim(0.32), margin: 0 }}>Automated · Simulated</p>
                       </div>
                     </div>
 
@@ -381,10 +381,10 @@ export function AutomationSection() {
                     <div
                       style={{
                         flex: 1,
-                        padding: "10px 8px",
+                        padding: "clamp(10px, 1.6vw, 18px) clamp(8px, 1.3vw, 16px)",
                         display: "flex",
                         flexDirection: "column",
-                        gap: 8,
+                        gap: 12,
                         overflow: "hidden",
                       }}
                     >
@@ -395,16 +395,16 @@ export function AutomationSection() {
                       >
                         <div
                           style={{
-                            maxWidth: "82%",
-                            background: dim(0.075),
-                            borderRadius: "8px 8px 8px 2px",
-                            padding: "5px 8px",
+                            maxWidth: "85%",
+                            background: dim(0.08),
+                            borderRadius: "10px 10px 10px 2px",
+                            padding: "clamp(6px, 0.9vw, 11px) clamp(8px, 1.2vw, 14px)",
                           }}
                         >
-                          <p style={{ fontSize: 7.5, color: dim(0.72), margin: 0, lineHeight: 1.55 }}>
+                          <p style={{ fontSize: "clamp(7.5px, 0.95vw, 12px)", color: dim(0.8), margin: 0, lineHeight: 1.55 }}>
                             Hi! I&apos;m interested in your services. Can you tell me more?
                           </p>
-                          <p style={{ ...mono, fontSize: 6, color: dim(0.28), margin: "2px 0 0", textAlign: "right" }}>12:34</p>
+                          <p style={{ ...mono, fontSize: "clamp(6px, 0.7vw, 8.5px)", color: dim(0.32), margin: "4px 0 0", textAlign: "right" }}>12:34</p>
                         </div>
                       </div>
 
@@ -416,17 +416,17 @@ export function AutomationSection() {
                         <div
                           style={{
                             maxWidth: "88%",
-                            background: dim(0.11),
-                            borderRadius: "8px 8px 2px 8px",
-                            padding: "5px 8px",
+                            background: dim(0.12),
+                            borderRadius: "10px 10px 2px 10px",
+                            padding: "clamp(6px, 0.9vw, 11px) clamp(8px, 1.2vw, 14px)",
                           }}
                         >
-                          <p style={{ fontSize: 7.5, color: dim(0.72), margin: 0, lineHeight: 1.55 }}>
+                          <p style={{ fontSize: "clamp(7.5px, 0.95vw, 12px)", color: dim(0.82), margin: 0, lineHeight: 1.55 }}>
                             Hi! Thanks for reaching out. I&apos;d be happy to help. What kind of solution are you looking for?
                           </p>
-                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 3, marginTop: 2 }}>
-                            <p style={{ ...mono, fontSize: 6, color: dim(0.28), margin: 0 }}>12:34</p>
-                            <span style={{ fontSize: 7, color: dim(0.4) }}>✓✓</span>
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginTop: 4 }}>
+                            <p style={{ ...mono, fontSize: "clamp(6px, 0.7vw, 8.5px)", color: dim(0.32), margin: 0 }}>12:34</p>
+                            <span style={{ fontSize: "clamp(7px, 0.8vw, 9.5px)", color: dim(0.45) }}>✓✓</span>
                           </div>
                         </div>
                       </div>
