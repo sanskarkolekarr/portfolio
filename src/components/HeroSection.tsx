@@ -23,6 +23,10 @@ const ANNOTATIONS = [
     // Hand-drawn curved arrow + arrowhead in 1200x760 viewBox
     linePath: "M 275 180 C 335 168, 385 192, 432 232",
     headPath: "M 418 228 L 434 234 L 427 218",
+    // Mobile placement + hand-drawn arrow in 390x780 viewBox
+    mobilePos: "left-5 top-[11dvh] text-left max-w-[43%]",
+    mobileLinePath: "M 105 160 C 122 192, 140 212, 160 232",
+    mobileHeadPath: "M 149 230 L 162 234 L 157 221",
   },
   {
     id: "builder",
@@ -31,6 +35,9 @@ const ANNOTATIONS = [
     desktopPos: "right-[4%] lg:right-[8%] top-[20%] text-right max-w-[240px]",
     linePath: "M 922 195 C 860 182, 812 204, 766 244",
     headPath: "M 780 241 L 764 246 L 772 230",
+    mobilePos: "right-5 top-[11dvh] text-right max-w-[43%]",
+    mobileLinePath: "M 285 160 C 268 192, 250 212, 230 232",
+    mobileHeadPath: "M 241 230 L 228 234 L 233 221",
   },
   {
     id: "curious",
@@ -39,6 +46,9 @@ const ANNOTATIONS = [
     desktopPos: "left-[4%] lg:left-[8%] bottom-[17%] text-left max-w-[250px]",
     linePath: "M 285 570 C 345 552, 392 505, 438 456",
     headPath: "M 424 461 L 440 454 L 434 470",
+    mobilePos: "left-5 bottom-[9dvh] text-left max-w-[44%]",
+    mobileLinePath: "M 98 585 C 110 538, 130 500, 154 462",
+    mobileHeadPath: "M 143 468 L 156 460 L 153 475",
   },
   {
     id: "beyond",
@@ -47,6 +57,9 @@ const ANNOTATIONS = [
     desktopPos: "right-[4%] lg:right-[8%] bottom-[17%] text-right max-w-[240px]",
     linePath: "M 915 568 C 855 550, 808 504, 762 456",
     headPath: "M 776 460 L 760 454 L 766 470",
+    mobilePos: "right-5 bottom-[9dvh] text-right max-w-[44%]",
+    mobileLinePath: "M 292 585 C 280 538, 260 500, 236 462",
+    mobileHeadPath: "M 247 468 L 234 460 L 237 475",
   },
 ] as const;
 
@@ -62,10 +75,13 @@ export function HeroSection() {
   const footerRef = useRef<HTMLElement>(null);
 
   const portraitLayerRef = useRef<HTMLDivElement>(null);
+  const mobilePortraitRef = useRef<HTMLDivElement>(null);
   const introLabelRef = useRef<HTMLDivElement>(null);
   const desktopArrowRefs = useRef<(SVGPathElement | null)[]>([]);
   const desktopHeadRefs = useRef<(SVGPathElement | null)[]>([]);
   const desktopNoteRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const mobileArrowRefs = useRef<(SVGPathElement | null)[]>([]);
+  const mobileHeadRefs = useRef<(SVGPathElement | null)[]>([]);
   const mobileNoteRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -227,17 +243,16 @@ export function HeroSection() {
 
       // ─── Mobile (< 768px) ───────────────────────────────────────────
       mm.add("(max-width: 767px)", () => {
-        const { vw, vh, cx, cy } = getPortraitCenter(0.72, 0.2);
-
-        gsap.set(portraitLayerRef.current, {
+        gsap.set(mobilePortraitRef.current, {
           opacity: 0,
-          x: 0,
-          y: 0,
-          scale: 1,
-          transformOrigin: `${cx}px ${cy}px`,
+          x: "14vw",
+          y: "-2vh",
+          scale: 1.12,
         });
         gsap.set(introLabelRef.current, { opacity: 0, y: 6 });
-        mobileNoteRefs.current.forEach((n) => gsap.set(n, { opacity: 0, y: 12 }));
+        mobileArrowRefs.current.forEach(prepareStroke);
+        mobileHeadRefs.current.forEach(prepareStroke);
+        mobileNoteRefs.current.forEach((n) => gsap.set(n, { opacity: 0, y: 10 }));
 
         const tl = gsap.timeline({
           scrollTrigger: {
@@ -272,9 +287,9 @@ export function HeroSection() {
             0.55,
           )
           .to(
-            portraitLayerRef.current,
-            { opacity: 1, duration: 0.45, ease: "power1.inOut" },
-            0.2,
+            mobilePortraitRef.current,
+            { opacity: 1, duration: 0.5, ease: "power1.inOut" },
+            0.25,
           )
           .to(
             bgLayerRef.current,
@@ -282,13 +297,13 @@ export function HeroSection() {
             0.3,
           );
 
-        // SCENE 2 — Portrait centers in upper half so annotations sit cleanly below
+        // SCENE 2 — Full unclipped portrait centers cleanly between top and bottom annotations
         tl.to(
-          portraitLayerRef.current,
+          mobilePortraitRef.current,
           {
-            x: vw * 0.5 - cx,
-            y: vh * 0.34 - cy,
-            scale: 0.56,
+            x: 0,
+            y: 0,
+            scale: 1,
             duration: 1.3,
             ease: "power2.inOut",
           },
@@ -299,15 +314,25 @@ export function HeroSection() {
           1.95,
         );
 
-        // SCENE 3 — Annotations reveal sequentially below portrait
+        // SCENE 3 — Hand-drawn SVG arrows & annotations reveal sequentially around portrait
         let cursor = 2.2;
         ANNOTATIONS.forEach((_, i) => {
           tl.to(
-            mobileNoteRefs.current[i],
-            { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+            mobileArrowRefs.current[i],
+            { strokeDashoffset: 0, duration: 0.55, ease: "power2.out" },
             cursor,
-          );
-          cursor += 0.65;
+          )
+            .to(
+              mobileHeadRefs.current[i],
+              { strokeDashoffset: 0, duration: 0.22, ease: "power2.out" },
+              cursor + 0.42,
+            )
+            .to(
+              mobileNoteRefs.current[i],
+              { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" },
+              cursor + 0.3,
+            );
+          cursor += 0.85;
         });
 
         tl.to({}, { duration: 0.6 });
@@ -349,10 +374,10 @@ export function HeroSection() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e]/85 via-transparent to-[#0e0e0e]/45" />
         </div>
 
-        {/* Isolated Transparent Portrait Layer (Pixel-matched 1672x941 overlay, moves to center in Scene 2) */}
+        {/* Isolated Transparent Portrait Layer — Desktop (Pixel-matched 1672x941) */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+          className="pointer-events-none absolute inset-0 z-10 hidden overflow-hidden md:block"
         >
           <div ref={portraitLayerRef} className="relative h-full w-full opacity-0">
             <Image
@@ -362,6 +387,26 @@ export function HeroSection() {
               priority
               sizes="100vw"
               className="object-cover object-[72%_20%] sm:object-[78%_center] lg:object-right grayscale contrast-[1.04]"
+            />
+          </div>
+        </div>
+
+        {/* Isolated Transparent Portrait Layer — Mobile (Unclipped 812x901 centered) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden md:hidden"
+        >
+          <div
+            ref={mobilePortraitRef}
+            className="relative -mt-[4dvh] h-[36dvh] w-[33dvh] max-w-[82vw] opacity-0"
+          >
+            <Image
+              src="/hero-portrait-mobile.png"
+              alt=""
+              fill
+              priority
+              sizes="82vw"
+              className="object-contain grayscale contrast-[1.04]"
             />
           </div>
         </div>
@@ -438,46 +483,61 @@ export function HeroSection() {
             ))}
           </div>
 
-          {/* Mobile Annotations (Positioned cleanly below centered portrait, no overlap) */}
-          <div className="flex h-full w-full flex-col justify-end px-6 pb-8 md:hidden">
-            <div className="grid grid-cols-2 gap-x-5 gap-y-4 border-t border-cream/10 pt-5">
+          {/* Mobile Hand-Drawn SVG Arrows + Annotations (Around centered portrait, zero overlap) */}
+          <div className="relative h-full w-full md:hidden">
+            <svg
+              viewBox="0 0 390 780"
+              preserveAspectRatio="xMidYMid meet"
+              className="absolute inset-0 h-full w-full"
+              fill="none"
+            >
               {ANNOTATIONS.map((item, i) => (
-                <div
-                  key={item.id}
-                  ref={(el) => {
-                    mobileNoteRefs.current[i] = el;
-                  }}
-                  className="opacity-0"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 14 14"
-                      fill="none"
-                      className="shrink-0 text-cream/55"
-                    >
-                      <path
-                        d="M2 11 C 5 9, 7 6, 10 3 M7 3 L 10.5 2.5 L 10 6"
-                        stroke="currentColor"
-                        strokeWidth="1.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <p
-                      className="text-lg leading-none tracking-[0.03em] text-cream"
-                      style={{ fontFamily: "var(--font-hand)" }}
-                    >
-                      {item.title}
-                    </p>
-                  </div>
-                  <p className="mt-1 font-sans text-[11px] leading-snug text-cream-muted">
-                    {item.subtitle}
-                  </p>
-                </div>
+                <g key={item.id}>
+                  <path
+                    ref={(el) => {
+                      mobileArrowRefs.current[i] = el;
+                    }}
+                    d={item.mobileLinePath}
+                    stroke="rgba(237, 233, 224, 0.55)"
+                    strokeWidth="1.35"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="opacity-0"
+                  />
+                  <path
+                    ref={(el) => {
+                      mobileHeadRefs.current[i] = el;
+                    }}
+                    d={item.mobileHeadPath}
+                    stroke="rgba(237, 233, 224, 0.65)"
+                    strokeWidth="1.35"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="opacity-0"
+                  />
+                </g>
               ))}
-            </div>
+            </svg>
+
+            {ANNOTATIONS.map((item, i) => (
+              <div
+                key={item.id}
+                ref={(el) => {
+                  mobileNoteRefs.current[i] = el;
+                }}
+                className={`absolute opacity-0 ${item.mobilePos}`}
+              >
+                <p
+                  className="text-xl leading-none tracking-[0.03em] text-cream"
+                  style={{ fontFamily: "var(--font-hand)" }}
+                >
+                  {item.title}
+                </p>
+                <p className="mt-1 font-sans text-[11px] leading-snug text-cream-muted">
+                  {item.subtitle}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
