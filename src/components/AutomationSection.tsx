@@ -37,8 +37,8 @@ export function AutomationSection() {
       gsap.registerPlugin(ScrollTrigger);
 
       gsapCtx = gsap.context(() => {
-        /* ── Set initial hidden states ─────────────────────────── */
-        gsap.set(lidRef.current,       { rotateX: 0 });
+        /* ── Set initial hidden states (closed laptop) ─────────── */
+        gsap.set(lidRef.current,       { rotateX: -90 });
         gsap.set(
           [glowRef.current, workspaceRef.current, workflowRef.current, doneRef.current],
           { opacity: 0 },
@@ -51,7 +51,7 @@ export function AutomationSection() {
 
         /* ── Reduced-motion: skip to final state immediately ──── */
         if (reduced) {
-          gsap.set(lidRef.current, { rotateX: -112 });
+          gsap.set(lidRef.current, { rotateX: -4 });
           gsap.set(
             [glowRef.current, workspaceRef.current, workflowRef.current, doneRef.current],
             { opacity: 1 },
@@ -73,8 +73,8 @@ export function AutomationSection() {
           },
         });
 
-        // 1 · Lid opens
-        tl.to(lidRef.current, { rotateX: -112, duration: 2, ease: "power2.inOut" });
+        // 1 · Lid opens smoothly upward (-90deg closed -> -4deg open)
+        tl.to(lidRef.current, { rotateX: -4, duration: 2, ease: "power2.inOut" });
 
         // 2 · Screen lights up
         tl.to(glowRef.current,      { opacity: 1, duration: 0.6 }, "-=0.5");
@@ -157,22 +157,43 @@ export function AutomationSection() {
               transformOrigin: "bottom center",
               transformStyle: "preserve-3d",
               borderRadius: "10px 10px 2px 2px",
-              background: "#1b1b1b",
-              boxShadow: `0 0 0 1px ${dim(0.07)}, inset 0 0 0 1px rgba(0,0,0,0.6)`,
               position: "relative",
-              overflow: "hidden",
             }}
           >
-            {/* Inner screen bezel */}
+            {/* Outer closed lid shell (visible when closed) */}
             <div
               style={{
                 position: "absolute",
-                inset: 10,
-                borderRadius: 6,
-                background: "#040404",
+                inset: 0,
+                borderRadius: "10px 10px 2px 2px",
+                background: "linear-gradient(145deg, #242424 0%, #151515 100%)",
+                boxShadow: `0 0 0 1px ${dim(0.08)}, inset 0 1px 0 ${dim(0.08)}`,
+                transform: "rotateX(180deg)",
+                backfaceVisibility: "hidden",
+              }}
+            />
+
+            {/* Front lid frame + inner screen bezel */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "10px 10px 2px 2px",
+                background: "#1b1b1b",
+                boxShadow: `0 0 0 1px ${dim(0.07)}, inset 0 0 0 1px rgba(0,0,0,0.6)`,
+                backfaceVisibility: "hidden",
                 overflow: "hidden",
               }}
             >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 10,
+                  borderRadius: 6,
+                  background: "#040404",
+                  overflow: "hidden",
+                }}
+              >
               {/* Screen glow (off → on) */}
               <div
                 ref={glowRef}
@@ -417,6 +438,8 @@ export function AutomationSection() {
               {/* ── End Workspace UI ───────────────────────── */}
             </div>
             {/* End screen bezel */}
+            </div>
+            {/* End front lid frame */}
           </div>
           {/* ── End LID ──────────────────────────────────────── */}
 
