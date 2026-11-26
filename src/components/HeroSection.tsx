@@ -60,17 +60,19 @@ export function HeroSection() {
 
         {/* Top Bar */}
         <header className="relative z-10 flex items-center justify-between gap-4">
+          {/* Left: Name (always) + Subtitle (desktop only) */}
           <div className="flex items-center gap-6 sm:gap-10 md:gap-16">
             <a href="#hero" className="group block focus:outline-none">
               <p className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-cream transition-opacity group-hover:opacity-80 sm:text-sm">
                 {identity.fullName}
               </p>
-              <p className="mt-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
+              {/* Hide "PERSONAL WEBSITE" subtitle on mobile */}
+              <p className="mt-0.5 hidden font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted sm:block">
                 {identity.topSubtitle}
               </p>
             </a>
 
-            {/* Status Pill */}
+            {/* Status Pill — desktop only (mobile pill is below) */}
             <div className="hidden items-center gap-2.5 rounded-full border border-cream/20 bg-obsidian/50 px-4 py-1.5 backdrop-blur-sm sm:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-cream/70" />
               <span className="font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-cream/90">
@@ -79,9 +81,10 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Right Controls: Social Icons + Minimal Two-Line Menu Trigger */}
+          {/* Right Controls */}
           <div className="flex items-center gap-3 sm:gap-5">
-            <nav aria-label="Social links" className="flex items-center gap-3 sm:gap-4">
+            {/* Social icons: hidden on mobile, visible on sm+ */}
+            <nav aria-label="Social links" className="hidden items-center gap-3 sm:flex sm:gap-4">
               {socials.map((s) => (
                 <a
                   key={s.id}
@@ -99,6 +102,7 @@ export function HeroSection() {
 
             <span aria-hidden="true" className="hidden h-4 w-px bg-cream/15 sm:block" />
 
+            {/* Hamburger */}
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
@@ -111,24 +115,40 @@ export function HeroSection() {
           </div>
         </header>
 
-        {/* Mobile Pill */}
-        <div className="relative z-10 mt-4 flex sm:hidden">
+        {/* Mobile-only: pill + socials row */}
+        <div className="relative z-10 mt-3 flex items-center justify-between sm:hidden">
           <div className="inline-flex items-center gap-2 rounded-full border border-cream/20 bg-obsidian/65 px-3.5 py-1 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-cream/75" />
             <span className="font-mono text-[9px] font-normal uppercase tracking-[0.16em] text-cream/90">
               {identity.pillText}
             </span>
           </div>
+          {/* Socials row on mobile, right-aligned */}
+          <nav aria-label="Social links" className="flex items-center gap-2.5">
+            {socials.map((s) => (
+              <a
+                key={s.id}
+                href={s.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={s.label}
+                title={s.label}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-cream/60 transition-colors hover:text-cream"
+              >
+                <SocialIcon id={s.id} className="h-[15px] w-[15px]" />
+              </a>
+            ))}
+          </nav>
         </div>
 
-        {/* Centerpiece — Crisp Heavy Condensed Display Typography (Native Anton 400, Zero Faux-Bold) */}
-        <div className="relative z-10 my-auto py-8 sm:py-10">
+        {/* Centerpiece — big name */}
+        <div className="relative z-10 my-auto py-6 sm:py-10">
           <div className="w-full md:max-w-[72%]">
             <h1 className="font-display font-normal uppercase tracking-[0.015em] text-[#EDE9E0] select-none">
               <span className="animate-rise-1 block text-[clamp(4.8rem,12.8vw,12.25rem)] leading-[0.95]">
                 {identity.firstName}
               </span>
-              <span className="animate-rise-2 mt-2.5 block pl-[14%] text-[clamp(4.8rem,12.8vw,12.25rem)] leading-[0.95] sm:mt-4 sm:pl-[18%] md:pl-[20%]">
+              <span className="animate-rise-2 mt-2 block pl-[10%] text-[clamp(4.8rem,12.8vw,12.25rem)] leading-[0.95] sm:mt-4 sm:pl-[18%] md:pl-[20%]">
                 {identity.lastName}
               </span>
             </h1>
@@ -136,8 +156,9 @@ export function HeroSection() {
         </div>
 
         {/* Bottom Metadata Strip */}
-        <footer className="animate-rise-3 relative z-10 flex flex-col gap-6 pt-4 md:flex-row md:items-end md:justify-between">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 md:flex md:items-stretch md:gap-0">
+        <footer className="animate-rise-3 relative z-10 flex flex-col gap-4 pt-2 md:flex-row md:items-end md:justify-between sm:gap-6 sm:pt-4">
+          {/* Mobile: 2-col grid for metadata; desktop: 3-col flex */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 md:flex md:items-stretch md:gap-0">
             <div className="md:border-r md:border-cream/15 md:pr-8 lg:pr-12">
               <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
                 {identity.basedInLabel}
@@ -156,7 +177,8 @@ export function HeroSection() {
               </p>
             </div>
 
-            <div className="md:pl-8 lg:pl-12">
+            {/* "Interested in" spans full width on mobile so it's not squished */}
+            <div className="col-span-2 sm:col-span-1 md:pl-8 lg:pl-12">
               <p className="font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-cream-muted">
                 {identity.interestedInLabel}
               </p>
