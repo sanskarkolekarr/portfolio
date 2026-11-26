@@ -23,7 +23,7 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sanskar.biz";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sanskar.biz";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
