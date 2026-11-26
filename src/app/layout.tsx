@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Anton, Inter, IBM_Plex_Mono, Caveat } from "next/font/google";
 import "./globals.css";
 import { portfolioData } from "@/data/portfolio";
 
@@ -20,6 +20,13 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
   subsets: ["latin"],
   variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
+
+const caveat = Caveat({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-caveat",
   display: "swap",
 });
 
@@ -54,7 +61,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${inter.variable} ${ibmPlexMono.variable}`}
+      className={`${anton.variable} ${inter.variable} ${ibmPlexMono.variable} ${caveat.variable}`}
     >
       <body className="min-h-screen bg-obsidian text-cream antialiased">
         {children}
