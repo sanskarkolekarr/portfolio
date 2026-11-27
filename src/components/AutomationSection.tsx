@@ -502,8 +502,8 @@ export function AutomationSection() {
 
       /* Desktop: pin section and advance steps 01 -> 05 strictly on scroll */
       matchMedia.add("(min-width: 900px)", () => {
-        gsap.set(lidRef.current, { rotateX: -65, opacity: 0.35 });
-        gsap.set(baseRef.current, { opacity: 0, y: 24 });
+        gsap.set(lidRef.current, { rotateX: -90 });
+        gsap.set(baseRef.current, { opacity: 0.45, y: 22 });
         gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 0 });
 
         const tl = gsap.timeline({
@@ -527,11 +527,11 @@ export function AutomationSection() {
           },
         });
 
-        /* 0 -> 0.18: MacBook base rises & lid opens */
+        /* 0 -> 0.18: 3D MacBook base rises & closed lid swings open (-90deg -> -2deg) */
         tl.to(baseRef.current, { opacity: 1, y: 0, duration: 0.12, ease: "power2.out" }, 0)
-          .to(lidRef.current, { rotateX: -2, opacity: 1, duration: 0.16, ease: "power2.out" }, 0)
-          .to(screenGlowRef.current, { opacity: 1, duration: 0.08 }, 0.09)
-          .to(workspaceRef.current, { opacity: 1, duration: 0.08 }, 0.1)
+          .to(lidRef.current, { rotateX: -2, duration: 0.17, ease: "power2.inOut" }, 0)
+          .to(screenGlowRef.current, { opacity: 1, duration: 0.08 }, 0.1)
+          .to(workspaceRef.current, { opacity: 1, duration: 0.08 }, 0.11)
           /* Hold timeline to 1.0 so scrub spans the 5 workflow steps */
           .to({}, { duration: 0.82 }, 0.18);
 
@@ -653,12 +653,17 @@ export function AutomationSection() {
       <div
         className="relative z-10 w-full"
         style={{
-          maxWidth: 1140,
-          perspective: "1600px",
-          perspectiveOrigin: "50% 35%",
+          maxWidth: 1120,
+          perspective: "1300px",
+          perspectiveOrigin: "50% 28%",
         }}
       >
-        <div style={{ transformStyle: "preserve-3d" }}>
+        <div
+          style={{
+            transformStyle: "preserve-3d",
+            transform: "rotateX(4deg) rotateY(-1deg)",
+          }}
+        >
           {/* ── MACBOOK LID / DISPLAY ───────────────────────────────── */}
           <div
             ref={lidRef}
@@ -667,118 +672,206 @@ export function AutomationSection() {
               transformOrigin: "bottom center",
               transformStyle: "preserve-3d",
               borderRadius: "14px 14px 4px 4px",
-              background: "#181818",
-              padding: "clamp(7px, 1vw, 12px)",
-              paddingBottom: "clamp(10px, 1.3vw, 16px)",
-              boxShadow: `0 0 0 1px ${dim(0.1)}, inset 0 1px 0 ${dim(0.09)}, 0 24px 60px rgba(0,0,0,0.65)`,
               position: "relative",
             }}
           >
-            {/* Camera notch dot */}
+            {/* Outer closed aluminum lid shell (visible when closed at -90deg) */}
             <div
               aria-hidden
               style={{
                 position: "absolute",
-                top: "clamp(3px, 0.45vw, 5px)",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                background: "#0b0b0b",
-                boxShadow: `0 0 0 1px ${dim(0.08)}`,
+                inset: 0,
+                borderRadius: "14px 14px 4px 4px",
+                background: "linear-gradient(145deg, #272727 0%, #141414 100%)",
+                boxShadow: `0 0 0 1px ${dim(0.1)}, inset 0 1px 0 ${dim(0.1)}`,
+                transform: "rotateX(180deg)",
+                backfaceVisibility: "hidden",
               }}
             />
 
-            {/* Inner dark glass screen */}
+            {/* Front lid bezel + screen */}
             <div
               style={{
+                borderRadius: "14px 14px 4px 4px",
+                background: "#181818",
+                padding: "clamp(6px, 0.9vw, 11px)",
+                paddingBottom: "clamp(8px, 1.1vw, 13px)",
+                boxShadow: `0 0 0 1px ${dim(0.1)}, inset 0 1px 0 ${dim(0.09)}, 0 24px 60px rgba(0,0,0,0.65)`,
+                backfaceVisibility: "hidden",
                 position: "relative",
-                borderRadius: 8,
-                background: "#070707",
-                border: `1px solid ${dim(0.06)}`,
-                overflow: "hidden",
               }}
             >
-              {/* Screen backlight glow */}
+              {/* Camera notch */}
               <div
-                ref={screenGlowRef}
                 aria-hidden
                 style={{
                   position: "absolute",
-                  inset: 0,
-                  background:
-                    "radial-gradient(ellipse 80% 55% at 50% 25%, rgba(255,255,255,0.03) 0%, transparent 100%)",
-                  pointerEvents: "none",
+                  top: "clamp(2px, 0.4vw, 4px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: "#0a0a0a",
+                  boxShadow: `0 0 0 1px ${dim(0.08)}`,
                 }}
               />
 
-              {/* ── MacBook Workspace UI ──────────────────────────── */}
+              {/* Inner dark macOS glass screen */}
               <div
-                ref={workspaceRef}
                 style={{
                   position: "relative",
-                  display: "flex",
-                  flexDirection: "column",
+                  borderRadius: 8,
+                  background:
+                    "radial-gradient(ellipse 90% 70% at 50% 15%, #121518 0%, #070809 65%, #050506 100%)",
+                  border: `1px solid ${dim(0.07)}`,
+                  overflow: "hidden",
                 }}
               >
-                {/* ── Top macOS Window Bar ───────────────────────── */}
+                {/* Screen backlight glow */}
                 <div
+                  ref={screenGlowRef}
+                  aria-hidden
                   style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "radial-gradient(ellipse 80% 55% at 50% 25%, rgba(255,255,255,0.03) 0%, transparent 100%)",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                {/* ── MacBook Workspace UI ──────────────────────────── */}
+                <div
+                  ref={workspaceRef}
+                  style={{
+                    position: "relative",
                     display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    padding: "9px 14px",
-                    borderBottom: `1px solid ${dim(0.07)}`,
-                    background: "rgba(255,255,255,0.018)",
+                    flexDirection: "column",
                   }}
                 >
-                  {/* Traffic lights + Studio title */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span
-                        style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: "50%",
-                          background: "rgba(255,255,255,0.18)",
-                          display: "inline-block",
-                        }}
-                      />
-                      <span
-                        style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: "50%",
-                          background: "rgba(255,255,255,0.11)",
-                          display: "inline-block",
-                        }}
-                      />
-                      <span
-                        style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: "50%",
-                          background: "rgba(255,255,255,0.11)",
-                          display: "inline-block",
-                        }}
-                      />
+                  {/* ── macOS Top Menu Bar ─────────────────────────── */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "4px 12px",
+                      background: "rgba(18, 19, 21, 0.85)",
+                      borderBottom: `1px solid ${dim(0.06)}`,
+                      fontSize: 10,
+                      color: dim(0.75),
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {/* Apple logo */}
+                      <svg width="10" height="12" viewBox="0 0 14 17" fill="currentColor" aria-hidden>
+                        <path d="M11.6 9.1c0-2 1.6-3 1.7-3.1-.9-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7-1.3 0-2.6.8-3.3 2-1.4 2.4-.4 6 1 8 .7 1 1.5 2.1 2.5 2 1 0 1.4-.6 2.6-.6 1.2 0 1.5.6 2.6.6 1.1 0 1.8-1 2.4-2 .8-1.1 1.1-2.2 1.1-2.3-.1 0-2.1-.8-2.1-3zM9.6 3.1c.6-.7 1-1.7.9-2.7-.8 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2z" />
+                      </svg>
+                      <span style={{ fontWeight: 600, fontSize: 10.5, color: dim(0.9) }}>
+                        Automation Studio
+                      </span>
+                      <span className="hidden sm:inline" style={{ color: dim(0.45), fontSize: 10 }}>
+                        File
+                      </span>
+                      <span className="hidden sm:inline" style={{ color: dim(0.45), fontSize: 10 }}>
+                        Workflow
+                      </span>
+                      <span className="hidden md:inline" style={{ color: dim(0.45), fontSize: 10 }}>
+                        View
+                      </span>
+                      <span className="hidden md:inline" style={{ color: dim(0.45), fontSize: 10 }}>
+                        Window
+                      </span>
                     </div>
-                    <span
-                      className="hidden md:inline"
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, color: dim(0.62) }}>
+                      {/* Wi-Fi icon */}
+                      <svg width="12" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                        <path d="M1.5 4.2a9.5 9.5 0 0 1 13 0M4 7a6 6 0 0 1 8 0M6.8 9.8a2 2 0 0 1 2.4 0" strokeLinecap="round" />
+                      </svg>
+                      {/* Battery icon */}
+                      <svg width="18" height="10" viewBox="0 0 22 12" fill="none" aria-hidden>
+                        <rect x="0.8" y="1" width="18" height="10" rx="2.2" stroke="currentColor" strokeOpacity="0.65" />
+                        <rect x="2.5" y="2.8" width="13.5" height="6.4" rx="1" fill="currentColor" fillOpacity="0.8" />
+                        <rect x="19.5" y="4" width="1.6" height="4" rx="0.6" fill="currentColor" fillOpacity="0.65" />
+                      </svg>
+                      <span style={{ ...mono, fontSize: 9.5, color: dim(0.65) }}>Thu 2:40 PM</span>
+                    </div>
+                  </div>
+
+                  {/* ── App Window Frame inside Desktop ─────────────── */}
+                  <div
+                    style={{
+                      margin: "clamp(6px, 0.9vw, 12px)",
+                      marginBottom: 4,
+                      borderRadius: 9,
+                      border: `1px solid ${dim(0.09)}`,
+                      background: "#090909",
+                      overflow: "hidden",
+                      boxShadow: "0 14px 36px rgba(0,0,0,0.55)",
+                    }}
+                  >
+                    {/* ── Top macOS Window Bar ───────────────────────── */}
+                    <div
                       style={{
-                        ...mono,
-                        fontSize: 10,
-                        letterSpacing: "0.16em",
-                        textTransform: "uppercase",
-                        color: dim(0.36),
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        padding: "7px 12px",
+                        borderBottom: `1px solid ${dim(0.07)}`,
+                        background: "rgba(255,255,255,0.02)",
                       }}
                     >
-                      Automation Studio
-                    </span>
-                  </div>
+                      {/* Traffic lights + Studio title */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span
+                            style={{
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: "#ff5f57",
+                              opacity: 0.85,
+                              display: "inline-block",
+                            }}
+                          />
+                          <span
+                            style={{
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: "#febc2e",
+                              opacity: 0.85,
+                              display: "inline-block",
+                            }}
+                          />
+                          <span
+                            style={{
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: "#28c840",
+                              opacity: 0.85,
+                              display: "inline-block",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="hidden md:inline"
+                          style={{
+                            ...mono,
+                            fontSize: 9.5,
+                            letterSpacing: "0.14em",
+                            textTransform: "uppercase",
+                            color: dim(0.38),
+                          }}
+                        >
+                          n8n · WhatsApp Studio
+                        </span>
+                      </div>
 
                   {/* Industry Switcher Pills */}
                   <div
@@ -1363,7 +1456,7 @@ export function AutomationSection() {
                     {/* WhatsApp Bottom Input Bar */}
                     <div
                       style={{
-                        padding: "9px 12px",
+                        padding: "8px 12px",
                         borderTop: `1px solid ${dim(0.07)}`,
                         background: "#101211",
                         display: "flex",
@@ -1374,12 +1467,12 @@ export function AutomationSection() {
                       <div
                         style={{
                           flex: 1,
-                          padding: "6px 11px",
+                          padding: "5px 11px",
                           borderRadius: 999,
                           background: "#171918",
                           border: `1px solid ${dim(0.06)}`,
                           ...mono,
-                          fontSize: 10.5,
+                          fontSize: 10,
                           color: dim(0.3),
                         }}
                       >
@@ -1388,15 +1481,15 @@ export function AutomationSection() {
                       <div
                         aria-hidden
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 26,
+                          height: 26,
                           borderRadius: "50%",
                           background: "rgba(74,222,128,0.14)",
                           border: "1px solid rgba(74,222,128,0.3)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 11,
+                          fontSize: 10.5,
                           color: "#4ade80",
                           flexShrink: 0,
                         }}
@@ -1406,10 +1499,90 @@ export function AutomationSection() {
                     </div>
                   </div>
                 </div>
+                  </div>
+                  {/* ── End App Window Frame ──────────────────────── */}
+
+                  {/* ── macOS Bottom Dock with Apps + WhatsApp ─────── */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      padding: "6px 10px 8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "clamp(6px, 1vw, 11px)",
+                        padding: "5px 10px",
+                        borderRadius: 14,
+                        background: "rgba(28, 30, 34, 0.72)",
+                        backdropFilter: "blur(12px)",
+                        border: `1px solid ${dim(0.11)}`,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+                      }}
+                    >
+                      {/* Finder */}
+                      <div className="mac-dock-icon" title="Finder" style={{ background: "linear-gradient(180deg, #4da6ff 0%, #1d6fe8 100%)" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" aria-hidden>
+                          <path d="M8 8v3M16 8v3M7 15c1.5 2 3.2 2.8 5 2.8s3.5-.8 5-2.8" strokeLinecap="round" />
+                        </svg>
+                      </div>
+
+                      {/* Safari */}
+                      <div className="mac-dock-icon" title="Safari" style={{ background: "linear-gradient(180deg, #38bdf8 0%, #0284c7 100%)" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" aria-hidden>
+                          <circle cx="12" cy="12" r="9" />
+                          <polygon points="10,10 16,8 14,14 8,16" fill="#fff" stroke="none" />
+                        </svg>
+                      </div>
+
+                      {/* Automation Studio (active) */}
+                      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <div className="mac-dock-icon" title="Automation Studio" style={{ background: "linear-gradient(180deg, #27272a 0%, #141416 100%)", border: `1px solid ${dim(0.16)}` }}>
+                          <span style={{ fontSize: 13, color: "#4ade80" }}>◈</span>
+                        </div>
+                        <span style={{ width: 3.5, height: 3.5, borderRadius: "50%", background: dim(0.75), marginTop: 2 }} />
+                      </div>
+
+                      {/* WhatsApp (active) */}
+                      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <div className="mac-dock-icon" title="WhatsApp" style={{ background: "linear-gradient(180deg, #25d366 0%, #128c7e 100%)" }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden>
+                            <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.1c-.2.6-1.3 1.1-1.8 1.2-.5.1-1.1.1-1.8-.1-.4-.1-1-.3-1.7-.7-3-1.3-4.9-4.3-5.1-4.5-.2-.2-1.2-1.6-1.2-3.1 0-1.5.8-2.2 1.1-2.5.3-.3.6-.4.8-.4h.6c.2 0 .5-.1.7.5.3.6.9 2.1.9 2.2.1.2.1.3 0 .5-.1.2-.2.3-.3.5l-.5.6c-.2.2-.3.4-.1.7.2.3.9 1.4 1.9 2.3 1.3 1.2 2.4 1.5 2.7 1.7.3.1.5.1.7-.1.2-.2.8-1 1-1.3.2-.3.4-.3.7-.2.3.1 1.8.8 2.1 1 .3.2.5.2.6.4.1.2.1.8-.1 1.4z" />
+                          </svg>
+                        </div>
+                        <span style={{ width: 3.5, height: 3.5, borderRadius: "50%", background: "#4ade80", marginTop: 2 }} />
+                      </div>
+
+                      {/* Calendar */}
+                      <div className="mac-dock-icon hidden sm:flex" title="Calendar" style={{ background: "#f4f4f5", color: "#111" }}>
+                        <span style={{ ...mono, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>27</span>
+                      </div>
+
+                      {/* Terminal */}
+                      <div className="mac-dock-icon hidden sm:flex" title="Terminal" style={{ background: "linear-gradient(180deg, #1e1e20 0%, #09090b 100%)", border: `1px solid ${dim(0.14)}` }}>
+                        <span style={{ ...mono, fontSize: 10, color: dim(0.85), fontWeight: 600 }}>&gt;_</span>
+                      </div>
+
+                      {/* Dock divider */}
+                      <div className="hidden sm:block" style={{ width: 1, height: 22, background: dim(0.14), margin: "0 2px" }} />
+
+                      {/* Trash */}
+                      <div className="mac-dock-icon hidden sm:flex" title="Trash" style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${dim(0.1)}` }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={dim(0.65)} strokeWidth="1.7" aria-hidden>
+                          <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* ── End Workspace UI ──────────────────────────────── */}
               </div>
-              {/* ── End Workspace UI ──────────────────────────────── */}
+              {/* ── End Inner Screen ────────────────────────────────── */}
             </div>
-            {/* ── End Inner Screen ────────────────────────────────── */}
+            {/* ── End Front Lid Bezel ───────────────────────────────── */}
           </div>
           {/* ── End MACBOOK LID ───────────────────────────────────── */}
 
@@ -1517,6 +1690,20 @@ export function AutomationSection() {
         }
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
+        }
+
+        .mac-dock-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.16s ease;
+          flex-shrink: 0;
+        }
+        .mac-dock-icon:hover {
+          transform: translateY(-3px) scale(1.1);
         }
 
         .mac-split-body {
