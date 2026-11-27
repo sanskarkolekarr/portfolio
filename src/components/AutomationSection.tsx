@@ -3,316 +3,435 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
 /* ═══════════════════════════════════════════════════════════════════
-   WORKFLOW DATA — 3 real-world automation pipelines, 4 nodes each
+   TYPES & DATA — 3 Industry Pipelines × 5 Nodes + Synced WhatsApp Chat
    ═══════════════════════════════════════════════════════════════════ */
 
-interface NodeData {
+interface WorkflowNode {
   step: number;
-  icon: string;
+  shortLabel: string;
   title: string;
+  icon: string;
   tag: string;
   description: string;
-  sampleInput: string;
-  sampleOutput: string;
+  payloadLabel: string;
+  payload: string;
   impact: string;
 }
 
-interface WorkflowData {
+interface ChatMessage {
   id: string;
-  label: string;
-  nodes: [NodeData, NodeData, NodeData, NodeData];
+  sender: "customer" | "ai" | "system";
+  text: string;
+  time: string;
+  /** Minimum node index (0-4) at which this message appears */
+  revealAtNode: number;
 }
 
-const WORKFLOWS: WorkflowData[] = [
+interface IndustryWorkflow {
+  id: string;
+  pillLabel: string;
+  title: string;
+  contactName: string;
+  contactInitials: string;
+  contactSubtitle: string;
+  outcomePill: string;
+  nodes: [WorkflowNode, WorkflowNode, WorkflowNode, WorkflowNode, WorkflowNode];
+  messages: ChatMessage[];
+}
+
+const WORKFLOWS: IndustryWorkflow[] = [
   {
-    id: "real-estate-lead",
-    label: "01 / Real Estate Lead & Viewing Engine",
+    id: "real-estate",
+    pillLabel: "Real Estate",
+    title: "Real Estate Lead & Viewing Engine",
+    contactName: "Priya Sharma",
+    contactInitials: "PS",
+    contactSubtitle: "online · Zillow 2BR Inquiry",
+    outcomePill: "Lead response: < 10 sec · Auto-booked viewings",
     nodes: [
       {
         step: 1,
-        icon: "⚡",
+        shortLabel: "Trigger",
         title: "Portal / Ad Webhook",
+        icon: "↓",
         tag: "Zillow + Meta Ads",
         description:
-          "Captures every listing inquiry from portal contact forms and paid ad leads in real-time. Deduplicates by phone/email and enriches with UTM source data.",
-        sampleInput: `{
-  "source": "zillow_inquiry",
+          "Captures listing inquiry in real-time, deduplicates by phone, and extracts budget, area, and move-in timeline.",
+        payloadLabel: "Incoming Lead JSON",
+        payload: `{
   "name": "Priya Sharma",
-  "phone": "+1-512-555-0188",
   "budget": "$650k",
   "area": "Downtown",
   "beds": "2BR",
   "timeline": "30 days"
 }`,
-        sampleOutput: `{
-  "lead_id": "RE-7204",
-  "status": "new",
-  "dedupe": "pass",
-  "source_quality": "high_intent"
-}`,
-        impact: "< 3 sec lead capture",
+        impact: "< 3s capture",
       },
       {
         step: 2,
-        icon: "⚙",
+        shortLabel: "Process",
         title: "Enrich & Match",
-        tag: "Google Sheets + CRM",
+        icon: "⚙",
+        tag: "Inventory + CRM",
         description:
-          "Cross-references the buyer's criteria against the live inventory sheet and CRM. Surfaces matching 2BR units under budget and verifies mortgage pre-approval status.",
-        sampleInput: `{
-  "lead_id": "RE-7204",
-  "budget": "$650k",
-  "area": "Downtown",
-  "beds": "2BR"
-}`,
-        sampleOutput: `{
-  "matches": 3,
-  "top_listing": "Unit 12B, Elm Tower",
-  "price": "$639,000",
+          "Checks live inventory sheet for matching 2BR units under $650k and verifies buyer mortgage pre-approval status.",
+        payloadLabel: "Matched Inventory",
+        payload: `{
+  "matches": ["Unit 12B ($639k)", "Unit 5A ($645k)"],
   "pre_approved": true,
-  "agent": "Sanskar K."
+  "score": 92
 }`,
-        impact: "Instant inventory matching",
+        impact: "Instant match",
       },
       {
         step: 3,
+        shortLabel: "AI Agent",
+        title: "Qualify & Slot Finder",
         icon: "◈",
-        title: "Qualify & Schedule",
-        tag: "OpenAI GPT-4 + WhatsApp",
+        tag: "OpenAI + Calendar",
         description:
-          "AI agent replies on WhatsApp/SMS, answers property FAQs (HOA, sq ft, parking), qualifies buyer urgency, and proposes 2 open viewing slots from the agent's calendar.",
-        sampleInput: `{
-  "lead_id": "RE-7204",
-  "matches": ["Unit 12B","Unit 5A","Unit 8C"],
-  "pre_approved": true,
-  "timeline": "30 days"
+          "Answers property FAQs (HOA, parking, sq ft), confirms urgency, and pulls 2 open viewing slots from the agent's calendar.",
+        payloadLabel: "AI Reasoning Output",
+        payload: `{
+  "intent": "schedule_viewing",
+  "slots_offered": ["Sat 2:00 PM", "Mon 11:00 AM"],
+  "faqs_resolved": ["HOA $420/mo", "1 EV spot"]
 }`,
-        sampleOutput: `{
-  "qualified": true,
-  "urgency": "high",
-  "slots_offered": ["Sat 2 PM","Mon 11 AM"],
-  "slot_chosen": "Sat 2 PM",
-  "faqs_answered": 3
-}`,
-        impact: "Lead response: < 10 sec",
+        impact: "< 10s reply",
       },
       {
         step: 4,
-        icon: "✓",
+        shortLabel: "Generate",
         title: "CRM + Calendar Sync",
-        tag: "HubSpot + Google Calendar",
+        icon: "▶",
+        tag: "HubSpot + GCal",
         description:
-          "Books the viewing on the agent's calendar, moves the CRM deal stage to 'Viewing Scheduled', assigns the listing agent, and queues automated reminder messages.",
-        sampleInput: `{
-  "lead_id": "RE-7204",
-  "slot_chosen": "Sat 2 PM",
-  "listing": "Unit 12B, Elm Tower",
-  "agent": "Sanskar K."
-}`,
-        sampleOutput: `{
-  "calendar_event": "evt_RE7204",
+          "Creates the calendar invite for Unit 12B, moves the HubSpot deal stage to 'Viewing Scheduled', and assigns the listing agent.",
+        payloadLabel: "Sync Payload",
+        payload: `{
   "crm_stage": "Viewing Scheduled",
-  "reminder_queued": "24h + 1h before",
-  "assigned_to": "sanskar@realty.co"
+  "calendar_event": "evt_RE7204",
+  "slot": "Sat 2:00 PM"
 }`,
-        impact: "Auto-booked viewings",
+        impact: "Zero manual entry",
+      },
+      {
+        step: 5,
+        shortLabel: "Send",
+        title: "Confirm & Remind",
+        icon: "✓",
+        tag: "WhatsApp API",
+        description:
+          "Sends the confirmed viewing pass with address pin on WhatsApp and queues 24h + 1h automated reminders.",
+        payloadLabel: "Delivery Status",
+        payload: `{
+  "whatsapp_delivered": true,
+  "reminders_queued": ["24h_before", "1h_before"]
+}`,
+        impact: "Auto-booked viewing",
+      },
+    ],
+    messages: [
+      {
+        id: "re-1",
+        sender: "customer",
+        text: "Hi! Saw the 2BR Downtown listing. My budget is around $650k and I'm looking to move within 30 days. Is it still available?",
+        time: "10:14",
+        revealAtNode: 0,
+      },
+      {
+        id: "re-sys-1",
+        sender: "system",
+        text: "CRM matched 2 units · Pre-approval verified",
+        time: "10:14",
+        revealAtNode: 1,
+      },
+      {
+        id: "re-2",
+        sender: "ai",
+        text: "Hi Priya! Yes, Unit 12B at Elm Tower ($639k, 2BR + 1 EV parking) is available. Would you like to tour it Sat at 2:00 PM or Mon at 11:00 AM?",
+        time: "10:14",
+        revealAtNode: 2,
+      },
+      {
+        id: "re-3",
+        sender: "customer",
+        text: "Saturday 2:00 PM works great!",
+        time: "10:15",
+        revealAtNode: 3,
+      },
+      {
+        id: "re-4",
+        sender: "ai",
+        text: "Confirmed! Your viewing for Unit 12B is booked for Saturday at 2:00 PM. Calendar invite & gate code sent — see you then!",
+        time: "10:15",
+        revealAtNode: 4,
       },
     ],
   },
   {
-    id: "plumbing-dispatch",
-    label: "02 / Plumbing Dispatch & Missed-Call Recovery",
+    id: "plumbing",
+    pillLabel: "Plumbing",
+    title: "Plumbing Dispatch & Missed-Call Recovery",
+    contactName: "Marcus Vance",
+    contactInitials: "MV",
+    contactSubtitle: "online · Missed Call Recovery",
+    outcomePill: "Zero missed emergency jobs · 5s SMS recovery",
     nodes: [
       {
         step: 1,
-        icon: "⚡",
+        shortLabel: "Trigger",
         title: "Missed Call / Form",
-        tag: "Twilio + n8n Webhook",
+        icon: "↓",
+        tag: "Twilio Webhook",
         description:
-          "Captures every unanswered inbound call or urgent web request within seconds. Logs caller ID, voicemail transcript (if any), and form details like issue description and ZIP code.",
-        sampleInput: `{
+          "Catches unanswered inbound call or urgent web request within 2 seconds and extracts issue + ZIP code.",
+        payloadLabel: "Missed Call Event",
+        payload: `{
   "type": "missed_call",
   "from": "+1-512-555-0147",
-  "voicemail": "Burst pipe under kitchen sink!",
   "issue": "Burst pipe under kitchen sink",
-  "zip": "78704",
-  "timestamp": "2024-11-27T07:03:22Z"
+  "zip": "78704"
 }`,
-        sampleOutput: `{
-  "ticket_id": "PL-3391",
-  "source": "missed_call",
-  "caller": "+1-512-555-0147",
-  "captured": true
-}`,
-        impact: "< 2 sec missed-call capture",
+        impact: "< 2s capture",
       },
       {
         step: 2,
-        icon: "⚙",
+        shortLabel: "Process",
         title: "Urgency & Zone Triage",
-        tag: "n8n Logic + Google Sheets",
+        icon: "⚙",
+        tag: "n8n Triage",
         description:
-          "Validates service area coverage by ZIP code against the coverage sheet. Classifies job severity as EMERGENCY or ROUTINE based on keyword analysis and time of day.",
-        sampleInput: `{
-  "ticket_id": "PL-3391",
-  "issue": "Burst pipe under kitchen sink",
-  "zip": "78704",
-  "time": "07:03"
-}`,
-        sampleOutput: `{
+          "Validates 78704 service coverage and classifies severity as EMERGENCY based on burst-pipe keywords.",
+        payloadLabel: "Triage Result",
+        payload: `{
   "in_service_area": true,
   "severity": "EMERGENCY",
-  "zone": "Central Austin",
   "on_call_tech": "Mike R.",
-  "eta_range": "20-35 min"
+  "eta": "20-30 min"
 }`,
-        impact: "Auto severity classification",
+        impact: "Auto severity check",
       },
       {
         step: 3,
+        shortLabel: "AI Agent",
+        title: "Instant Responder",
         icon: "◈",
-        title: "Instant SMS Responder",
-        tag: "OpenAI GPT-4 + Twilio SMS",
+        tag: "GPT-4 + WhatsApp/SMS",
         description:
-          "Texts the caller within 5 seconds confirming emergency dispatch availability. Collects a photo of the issue and verifies the property address for the technician.",
-        sampleInput: `{
-  "ticket_id": "PL-3391",
-  "caller": "+1-512-555-0147",
-  "severity": "EMERGENCY",
-  "eta_range": "20-35 min"
+          "Messages the homeowner within 5 seconds confirming emergency availability and requests a quick photo & street address.",
+        payloadLabel: "Outbound Prompt",
+        payload: `{
+  "latency": "4.2s",
+  "action": "request_photo_and_address",
+  "slot_held": "priority_emergency"
 }`,
-        sampleOutput: `{
-  "sms_sent": true,
-  "reply": "We got your call! A plumber is being dispatched now — ETA 20-35 min. Reply with a photo of the issue & confirm your address.",
-  "photo_requested": true,
-  "latency": "4.2s"
-}`,
-        impact: "5 sec SMS recovery",
+        impact: "5s recovery",
       },
       {
         step: 4,
-        icon: "✓",
-        title: "Technician Dispatch",
-        tag: "Slack + Google Maps + Board",
+        shortLabel: "Dispatch",
+        title: "Tech Alert & Ticket",
+        icon: "▶",
+        tag: "Slack + Dispatch",
         description:
-          "Alerts the on-call plumber with a full job brief and GPS pin on Slack. Logs the ticket in the dispatch board and sends a live ETA tracking link to the homeowner.",
-        sampleInput: `{
-  "ticket_id": "PL-3391",
+          "Logs ticket #PL-3391 on the dispatch board and pings on-call plumber Mike R. with the photo, shut-off notes, and GPS pin.",
+        payloadLabel: "Dispatch Brief",
+        payload: `{
+  "ticket": "PL-3391",
   "tech": "Mike R.",
-  "address": "2104 S Lamar Blvd, Austin",
-  "severity": "EMERGENCY"
+  "gps_pin": "2104 S Lamar Blvd",
+  "board_status": "Dispatched"
 }`,
-        sampleOutput: `{
-  "tech_notified": true,
-  "gps_pin_sent": true,
-  "dispatch_board": "logged",
+        impact: "Instant tech brief",
+      },
+      {
+        step: 5,
+        shortLabel: "Send",
+        title: "Live ETA Update",
+        icon: "✓",
+        tag: "WhatsApp / SMS",
+        description:
+          "Sends the homeowner live technician tracking link and shut-off valve safety tip while Mike is en route.",
+        payloadLabel: "Homeowner Alert",
+        payload: `{
   "eta_link": "track.plumb.co/PL-3391",
-  "homeowner_notified": true
+  "eta_minutes": 22,
+  "delivered": true
 }`,
-        impact: "Zero missed emergency jobs",
+        impact: "Zero lost emergencies",
+      },
+    ],
+    messages: [
+      {
+        id: "pl-sys-1",
+        sender: "system",
+        text: "Missed call detected from +1-512-555-0147 · ZIP 78704",
+        time: "07:03",
+        revealAtNode: 0,
+      },
+      {
+        id: "pl-1",
+        sender: "ai",
+        text: "Sorry we missed your call! Saw your urgent note about the burst pipe in 78704. We have an emergency plumber available now — can you share your address & a quick photo?",
+        time: "07:03",
+        revealAtNode: 2,
+      },
+      {
+        id: "pl-2",
+        sender: "customer",
+        text: "2104 S Lamar Blvd. Water is spraying under the kitchen sink — shut off the main valve just now.",
+        time: "07:04",
+        revealAtNode: 3,
+      },
+      {
+        id: "pl-sys-2",
+        sender: "system",
+        text: "Ticket #PL-3391 dispatched to Mike R.",
+        time: "07:04",
+        revealAtNode: 3,
+      },
+      {
+        id: "pl-3",
+        sender: "ai",
+        text: "Got it, Marcus! Mike R. is dispatched and 22 mins away. Live ETA: track.plumb.co/PL-3391",
+        time: "07:04",
+        revealAtNode: 4,
       },
     ],
   },
   {
-    id: "glass-cleaning-quote",
-    label: "03 / Glass Cleaning Quote & Follow-Up",
+    id: "glass-cleaning",
+    pillLabel: "Glass Cleaning",
+    title: "Glass Cleaning Quote & Follow-Up",
+    contactName: "David Chen",
+    contactInitials: "DC",
+    contactSubtitle: "online · Quote Request",
+    outcomePill: "Instant quote-to-booking · Automated follow-ups",
     nodes: [
       {
         step: 1,
-        icon: "⚡",
+        shortLabel: "Trigger",
         title: "Quote Request Form",
-        tag: "Website Form + n8n",
+        icon: "↓",
+        tag: "Web Form + n8n",
         description:
-          "Captures residential or commercial cleaning inquiries from the website form. Extracts property type, window count, story height, access notes, and preferred frequency.",
-        sampleInput: `{
-  "source": "quote_form",
+          "Captures residential/commercial inquiry with window count, story height, skylight count, and desired frequency.",
+        payloadLabel: "Quote Request",
+        payload: `{
   "name": "David Chen",
-  "phone": "+1-737-555-0263",
-  "type": "residential",
   "scope": "2-story home, 24 windows + skylight",
   "frequency": "Quarterly"
 }`,
-        sampleOutput: `{
-  "quote_id": "GC-5518",
-  "status": "new",
-  "property_type": "residential",
-  "windows": 25,
-  "stories": 2
-}`,
-        impact: "< 3 sec form capture",
+        impact: "< 3s intake",
       },
       {
         step: 2,
-        icon: "⚙",
+        shortLabel: "Process",
         title: "Pricing Matrix Lookup",
-        tag: "Google Sheets + n8n",
+        icon: "⚙",
+        tag: "Pricing Sheet",
         description:
-          "Calculates the base quote range using the pricing matrix — factoring window count, story height multiplier, skylight surcharge, and recurring service discount rules.",
-        sampleInput: `{
-  "quote_id": "GC-5518",
-  "windows": 25,
-  "stories": 2,
-  "skylight": true,
-  "frequency": "Quarterly"
+          "Calculates base estimate using window count, 2-story ladder factor, skylight surcharge, and 10% quarterly discount.",
+        payloadLabel: "Calculated Quote",
+        payload: `{
+  "base_24_windows": "$285.00",
+  "skylight": "$40.00",
+  "quarterly_discount": "-10%",
+  "total": "$292.50"
 }`,
-        sampleOutput: `{
-  "base_price": "$285",
-  "skylight_add": "$40",
-  "recurring_discount": "-10%",
-  "total_quote": "$292.50",
-  "price_tier": "standard"
-}`,
-        impact: "Instant pricing calculation",
+        impact: "Accurate in 100ms",
       },
       {
         step: 3,
+        shortLabel: "AI Agent",
+        title: "Estimate & Upsell",
         icon: "◈",
-        title: "Custom Estimate & Upsell",
-        tag: "OpenAI GPT-4 + WhatsApp",
+        tag: "GPT-4 + WhatsApp",
         description:
-          "Drafts an itemized quote breakdown and sends it via WhatsApp/email. Suggests screen and track cleaning add-ons based on property type and handles follow-up questions.",
-        sampleInput: `{
-  "quote_id": "GC-5518",
-  "total_quote": "$292.50",
-  "property_type": "residential",
-  "customer": "David Chen"
+          "Sends an itemized quote breakdown on WhatsApp and recommends deep screen & track cleaning (+$40) with instant Q&A.",
+        payloadLabel: "Upsell & Reply",
+        payload: `{
+  "estimate_total": "$292.50",
+  "suggested_addon": "Screen & Track (+$40)",
+  "upsell_accepted": true
 }`,
-        sampleOutput: `{
-  "estimate_sent": true,
-  "items": "24 windows + 1 skylight + track cleaning add-on",
-  "upsell_accepted": "track_cleaning",
-  "revised_total": "$332.50",
-  "questions_handled": 2
-}`,
-        impact: "Automated quote delivery",
+        impact: "+14% avg ticket",
       },
       {
         step: 4,
-        icon: "✓",
-        title: "Booking & Follow-Up",
-        tag: "Cal.com + n8n Sequences",
+        shortLabel: "Generate",
+        title: "Booking Link & Plan",
+        icon: "▶",
+        tag: "Cal.com + Stripe",
         description:
-          "Sends a one-click approval and booking link. If unopened after 48 hours, triggers an automated follow-up sequence. Schedules recurring service reminders for quarterly clients.",
-        sampleInput: `{
-  "quote_id": "GC-5518",
+          "Generates a one-click approval & booking link for the $332.50 package and arms a 48-hour follow-up if unopened.",
+        payloadLabel: "Booking Payload",
+        payload: `{
   "revised_total": "$332.50",
-  "customer": "David Chen",
-  "phone": "+1-737-555-0263"
+  "booking_url": "book.clearglass.co/GC-5518",
+  "followup_48h": "armed"
 }`,
-        sampleOutput: `{
-  "booking_link_sent": true,
-  "approved": true,
-  "scheduled_date": "2024-12-14",
-  "followup_48h": "armed",
-  "recurring_reminder": "Quarterly"
+        impact: "Zero quote drop-off",
+      },
+      {
+        step: 5,
+        shortLabel: "Send",
+        title: "Confirm & Recur",
+        icon: "✓",
+        tag: "n8n Sequences",
+        description:
+          "Confirms the cleaning slot, sends prep checklist, and schedules automatic quarterly renewal reminders.",
+        payloadLabel: "Schedule Confirmed",
+        payload: `{
+  "booked_date": "Dec 14, 9:00 AM",
+  "recurring_cycle": "Quarterly",
+  "next_reminder": "90 days"
 }`,
-        impact: "Instant quote-to-booking",
+        impact: "Automated retention",
+      },
+    ],
+    messages: [
+      {
+        id: "gc-1",
+        sender: "customer",
+        text: "Hey! Looking for a quote on a 2-story home — 24 windows plus 1 skylight. Ideally quarterly service.",
+        time: "14:20",
+        revealAtNode: 0,
+      },
+      {
+        id: "gc-sys-1",
+        sender: "system",
+        text: "Pricing matrix calculated · 10% quarterly discount applied",
+        time: "14:20",
+        revealAtNode: 1,
+      },
+      {
+        id: "gc-2",
+        sender: "ai",
+        text: "Hi David! Here's your estimate:\n• 24 windows (2-story) + 1 skylight: $325\n• Quarterly 10% off: $292.50\nWant to add deep screen & track cleaning for +$40?",
+        time: "14:20",
+        revealAtNode: 2,
+      },
+      {
+        id: "gc-3",
+        sender: "customer",
+        text: "Yes, let's include the screen & track cleaning!",
+        time: "14:22",
+        revealAtNode: 3,
+      },
+      {
+        id: "gc-4",
+        sender: "ai",
+        text: "Updated total is $332.50! Tap to pick your slot & confirm: book.clearglass.co/GC-5518 (we'll also remind you each quarter).",
+        time: "14:22",
+        revealAtNode: 4,
       },
     ],
   },
 ];
 
-/* ─── Style helpers ────────────────────────────────────────── */
+/* ─── Style helpers ──────────────────────────────────────────────── */
 const mono: React.CSSProperties = { fontFamily: "var(--font-mono, monospace)" };
 const dim = (a: number) => `rgba(255,255,255,${a})`;
 
@@ -321,680 +440,1095 @@ const dim = (a: number) => `rgba(255,255,255,${a})`;
    ═══════════════════════════════════════════════════════════════════ */
 export function AutomationSection() {
   const [activeTab, setActiveTab] = useState(0);
-  const [activeNode, setActiveNode] = useState(0);
+  const [activeNode, setActiveNode] = useState(4); // default full conversation visible on arrival
   const [simulating, setSimulating] = useState(false);
   const [simStep, setSimStep] = useState(-1);
   const [simDone, setSimDone] = useState(false);
-  const nodeEls = useRef<(HTMLButtonElement | null)[]>([]);
+
   const sectionRef = useRef<HTMLElement>(null);
+  const lidRef = useRef<HTMLDivElement>(null);
+  const screenGlowRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const baseRef = useRef<HTMLDivElement>(null);
+  const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const workflow = WORKFLOWS[activeTab];
-  const node = workflow.nodes[activeNode];
+  const currentNode = workflow.nodes[activeNode];
 
-  /* ── Tab switch ─────────────────────────────────────────── */
-  const switchTab = useCallback(
-    (idx: number) => {
-      if (simulating) return;
-      setActiveTab(idx);
-      setActiveNode(0);
+  /* ── Cleanup simulation timer on unmount ───────────────────────── */
+  useEffect(() => {
+    return () => {
+      if (simTimerRef.current) clearInterval(simTimerRef.current);
+    };
+  }, []);
+
+  /* ── Run sequential 5-node simulation ──────────────────────────── */
+  const runFlow = useCallback(
+    (startImmediately = true) => {
+      if (simTimerRef.current) clearInterval(simTimerRef.current);
+      if (!startImmediately) return;
+
+      setSimulating(true);
       setSimDone(false);
-      setSimStep(-1);
+      setSimStep(0);
+      setActiveNode(0);
+
+      let step = 0;
+      simTimerRef.current = setInterval(() => {
+        step += 1;
+        if (step < 5) {
+          setSimStep(step);
+          setActiveNode(step);
+        } else {
+          if (simTimerRef.current) clearInterval(simTimerRef.current);
+          simTimerRef.current = null;
+          setSimStep(-1);
+          setSimDone(true);
+          setActiveNode(4);
+          setSimulating(false);
+        }
+      }, 480);
     },
-    [simulating],
+    [],
   );
 
-  /* ── Run simulation ─────────────────────────────────────── */
-  const runSim = useCallback(() => {
-    if (simulating) return;
-    setSimulating(true);
-    setSimDone(false);
-    setSimStep(0);
-    setActiveNode(0);
-
-    let step = 0;
-    const iv = setInterval(() => {
-      step += 1;
-      if (step < 4) {
-        setSimStep(step);
-        setActiveNode(step);
-      } else {
-        clearInterval(iv);
-        setSimStep(-1);
-        setSimDone(true);
-        setActiveNode(3);
-        setSimulating(false);
+  /* ── Switch workflow tab + replay sequence ─────────────────────── */
+  const handleTabSwitch = useCallback(
+    (idx: number) => {
+      if (idx === activeTab && !simulating) {
+        runFlow(true);
+        return;
       }
-    }, 500);
-  }, [simulating]);
+      setActiveTab(idx);
+      runFlow(true);
+    },
+    [activeTab, simulating, runFlow],
+  );
 
-  /* ── GSAP subtle entrance on scroll ─────────────────────── */
+  /* ── GSAP MacBook rise & lid-opening entrance ──────────────────── */
   useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let ctx: { revert: () => void } | undefined;
+
     (async () => {
       const { default: gsap } = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       gsap.registerPlugin(ScrollTrigger);
 
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
       ctx = gsap.context(() => {
-        gsap.from(sectionRef.current, {
-          opacity: 0,
-          y: 60,
-          duration: 1,
-          ease: "power3.out",
+        if (reduced) {
+          gsap.set(lidRef.current, { rotateX: -2, opacity: 1 });
+          gsap.set(baseRef.current, { opacity: 1, y: 0 });
+          gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 1 });
+          return;
+        }
+
+        gsap.set(lidRef.current, { rotateX: -72, opacity: 0.25 });
+        gsap.set(baseRef.current, { opacity: 0, y: 28 });
+        gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 0 });
+
+        const tl = gsap.timeline({
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: "top 85%",
+            start: "top 72%",
             toggleActions: "play none none none",
           },
         });
+
+        tl.to(baseRef.current, {
+          opacity: 1,
+          y: 0,
+          duration: 0.7,
+          ease: "power3.out",
+        })
+          .to(
+            lidRef.current,
+            {
+              rotateX: -2,
+              opacity: 1,
+              duration: 1.05,
+              ease: "power3.out",
+            },
+            "<0.08",
+          )
+          .to(
+            screenGlowRef.current,
+            {
+              opacity: 1,
+              duration: 0.45,
+              ease: "power2.out",
+            },
+            "-=0.45",
+          )
+          .to(
+            workspaceRef.current,
+            {
+              opacity: 1,
+              duration: 0.5,
+              ease: "power2.out",
+            },
+            "-=0.35",
+          );
       }, sectionRef);
     })();
 
-    return () => { ctx?.revert(); };
+    return () => {
+      ctx?.revert();
+    };
   }, []);
 
-  /* ═══════════════════════════════════════════════════════════
-     RENDER
-     ═══════════════════════════════════════════════════════════ */
+  /* Visible WhatsApp messages up to activeNode */
+  const visibleMessages = workflow.messages.filter(
+    (m) => m.revealAtNode <= activeNode,
+  );
+
   return (
     <section
       ref={sectionRef}
       id="automation"
-      className="relative w-full"
-      style={{ background: "#080808", padding: "clamp(80px, 12vw, 160px) 0" }}
+      className="relative flex w-full flex-col items-center justify-center overflow-hidden"
+      style={{
+        background: "#080808",
+        padding: "clamp(64px, 8vw, 110px) clamp(12px, 3vw, 48px)",
+      }}
     >
-      {/* ── Section header ──────────────────────────────────── */}
-      <div className="mx-auto px-5 sm:px-8 md:px-14" style={{ maxWidth: 1120 }}>
+      {/* Subtle radial ambient glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 75% 55% at 50% 55%, rgba(255,255,255,0.025) 0%, transparent 100%)",
+        }}
+      />
+
+      {/* ── Editorial Top Header ──────────────────────────────────── */}
+      <div
+        className="relative z-10 mb-6 flex w-full items-end justify-between sm:mb-8"
+        style={{ maxWidth: 1140 }}
+      >
+        <div>
+          <p
+            style={{
+              ...mono,
+              fontSize: 10,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              color: dim(0.32),
+              margin: "0 0 6px",
+            }}
+          >
+            02 / Automation
+          </p>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: "clamp(24px, 3.8vw, 42px)",
+              fontWeight: 400,
+              lineHeight: 1.05,
+              letterSpacing: "0.01em",
+              textTransform: "uppercase",
+              color: dim(0.92),
+              margin: 0,
+            }}
+          >
+            Automation Studio
+          </h2>
+        </div>
+
         <p
+          className="hidden sm:block"
           style={{
             ...mono,
             fontSize: 10,
-            letterSpacing: "0.25em",
+            letterSpacing: "0.22em",
             textTransform: "uppercase",
-            color: dim(0.3),
-            marginBottom: 12,
-          }}
-        >
-          03 / Automation
-        </p>
-        <h2
-          className="font-display"
-          style={{
-            fontSize: "clamp(28px, 5vw, 52px)",
-            fontWeight: 400,
-            lineHeight: 1.08,
-            letterSpacing: "-0.02em",
-            color: dim(0.92),
+            color: dim(0.26),
             margin: 0,
           }}
         >
-          Automation Studio
-        </h2>
-        <p
-          style={{
-            fontSize: "clamp(14px, 1.6vw, 17px)",
-            color: dim(0.45),
-            lineHeight: 1.6,
-            maxWidth: 540,
-            marginTop: 14,
-          }}
-        >
-          Real workflows I build for clients — click any node to inspect the
-          data flowing through it.
+          Interactive MacBook Workspace
         </p>
       </div>
 
-      {/* ── Studio Card ─────────────────────────────────────── */}
+      {/* ══════════════ 3-D MacBook Scene ══════════════ */}
       <div
-        className="mx-auto mt-10 sm:mt-14"
+        className="relative z-10 w-full"
         style={{
-          maxWidth: 1120,
-          padding: "0 clamp(12px, 2vw, 56px)",
+          maxWidth: 1140,
+          perspective: "1600px",
+          perspectiveOrigin: "50% 35%",
         }}
       >
-        <div
-          style={{
-            border: `1px solid ${dim(0.08)}`,
-            borderRadius: 12,
-            background: "#0e0e0e",
-            overflow: "hidden",
-          }}
-        >
-          {/* ── Top bar: tabs + status + run button ──────────── */}
+        <div style={{ transformStyle: "preserve-3d" }}>
+          {/* ── MACBOOK LID / DISPLAY ───────────────────────────────── */}
           <div
+            ref={lidRef}
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 0,
-              borderBottom: `1px solid ${dim(0.07)}`,
-              background: "rgba(255,255,255,0.012)",
+              width: "100%",
+              transformOrigin: "bottom center",
+              transformStyle: "preserve-3d",
+              borderRadius: "14px 14px 4px 4px",
+              background: "#181818",
+              padding: "clamp(7px, 1vw, 12px)",
+              paddingBottom: "clamp(10px, 1.3vw, 16px)",
+              boxShadow: `0 0 0 1px ${dim(0.1)}, inset 0 1px 0 ${dim(0.09)}, 0 24px 60px rgba(0,0,0,0.65)`,
+              position: "relative",
             }}
           >
-            {/* Workflow tabs */}
+            {/* Camera notch dot */}
             <div
-              className="hide-scrollbar"
+              aria-hidden
               style={{
-                display: "flex",
-                gap: 2,
-                padding: "8px 10px",
-                overflowX: "auto",
-                flex: "1 1 auto",
-                minWidth: 0,
+                position: "absolute",
+                top: "clamp(3px, 0.45vw, 5px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: "#0b0b0b",
+                boxShadow: `0 0 0 1px ${dim(0.08)}`,
               }}
-            >
-              {WORKFLOWS.map((w, i) => (
-                <button
-                  key={w.id}
-                  onClick={() => switchTab(i)}
-                  style={{
-                    ...mono,
-                    fontSize: "clamp(9px, 1vw, 11px)",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    padding: "6px 14px",
-                    borderRadius: 100,
-                    border: `1px solid ${i === activeTab ? dim(0.25) : "transparent"}`,
-                    background: i === activeTab ? dim(0.06) : "transparent",
-                    color: i === activeTab ? dim(0.85) : dim(0.35),
-                    cursor: simulating ? "default" : "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {w.label}
-                </button>
-              ))}
-            </div>
+            />
 
-            {/* Status badge + Run button */}
+            {/* Inner dark glass screen */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "8px 14px 8px 6px",
-                flexShrink: 0,
-              }}
-            >
-              <span
-                className="hidden sm:flex"
-                style={{
-                  ...mono,
-                  fontSize: 8,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  color: dim(0.25),
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <span
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: "#4ade80",
-                    display: "inline-block",
-                    animation: "pulse-dot 2s ease infinite",
-                  }}
-                />
-                Interactive Preview&ensp;·&ensp;Click Any Node
-              </span>
-
-              <button
-                onClick={runSim}
-                disabled={simulating}
-                style={{
-                  ...mono,
-                  fontSize: "clamp(8px, 0.9vw, 10px)",
-                  letterSpacing: "0.14em",
-                  textTransform: "uppercase",
-                  padding: "6px 16px",
-                  borderRadius: 6,
-                  border: `1px solid ${dim(simulating ? 0.06 : 0.18)}`,
-                  background: simulating ? dim(0.03) : "transparent",
-                  color: simulating ? dim(0.3) : dim(0.65),
-                  cursor: simulating ? "wait" : "pointer",
-                  transition: "all 0.2s ease",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {simulating ? "Running…" : simDone ? "✓ Complete" : "▶ Run Test Flow"}
-              </button>
-            </div>
-          </div>
-
-          {/* ── Pipeline Nodes Row ───────────────────────────── */}
-          <div style={{ padding: "clamp(20px, 3vw, 36px) clamp(14px, 2.5vw, 32px)" }}>
-            {/* Desktop: horizontal | Mobile: vertical */}
-            <div
-              className="pipeline-nodes"
-              style={{
-                display: "flex",
-                alignItems: "stretch",
-                gap: 0,
-              }}
-            >
-              {workflow.nodes.map((n, i) => {
-                const isActive = i === activeNode;
-                const isPulsing = simulating && i === simStep;
-
-                return (
-                  <div
-                    key={`${workflow.id}-${i}`}
-                    className="pipeline-node-wrapper"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    {/* Node button */}
-                    <button
-                      ref={(el) => { nodeEls.current[i] = el; }}
-                      onClick={() => {
-                        if (!simulating) {
-                          setActiveNode(i);
-                          setSimDone(false);
-                        }
-                      }}
-                      className="pipeline-node-btn"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "clamp(6px, 0.8vw, 10px)",
-                        padding: "clamp(10px, 1.5vw, 18px) clamp(8px, 1.2vw, 16px)",
-                        borderRadius: 10,
-                        border: `1.5px solid ${
-                          isPulsing
-                            ? "rgba(74,222,128,0.6)"
-                            : isActive
-                              ? dim(0.3)
-                              : dim(0.06)
-                        }`,
-                        background: isPulsing
-                          ? "rgba(74,222,128,0.06)"
-                          : isActive
-                            ? dim(0.04)
-                            : "transparent",
-                        cursor: simulating ? "default" : "pointer",
-                        transition: "all 0.25s ease",
-                        position: "relative",
-                        flexShrink: 0,
-                        width: "clamp(72px, 10vw, 110px)",
-                        boxShadow: isPulsing
-                          ? "0 0 20px rgba(74,222,128,0.12)"
-                          : isActive
-                            ? `0 0 24px ${dim(0.04)}`
-                            : "none",
-                      }}
-                    >
-                      {/* Step badge */}
-                      <span
-                        style={{
-                          ...mono,
-                          fontSize: "clamp(7px, 0.7vw, 8px)",
-                          color: isPulsing ? "rgba(74,222,128,0.8)" : dim(0.3),
-                          letterSpacing: "0.15em",
-                          position: "absolute",
-                          top: 5,
-                          right: 7,
-                        }}
-                      >
-                        {String(n.step).padStart(2, "0")}
-                      </span>
-
-                      {/* Icon */}
-                      <span
-                        style={{
-                          fontSize: "clamp(18px, 2.2vw, 26px)",
-                          color: isPulsing
-                            ? "rgba(74,222,128,0.9)"
-                            : isActive
-                              ? dim(0.8)
-                              : dim(0.45),
-                          transition: "color 0.2s ease",
-                        }}
-                      >
-                        {n.icon}
-                      </span>
-
-                      {/* Title */}
-                      <span
-                        style={{
-                          fontSize: "clamp(9px, 1vw, 12px)",
-                          fontWeight: 500,
-                          color: isActive ? dim(0.85) : dim(0.5),
-                          textAlign: "center",
-                          lineHeight: 1.25,
-                          transition: "color 0.2s ease",
-                        }}
-                      >
-                        {n.title}
-                      </span>
-
-                      {/* Tech tag */}
-                      <span
-                        style={{
-                          ...mono,
-                          fontSize: "clamp(7px, 0.7vw, 8.5px)",
-                          color: dim(0.28),
-                          textAlign: "center",
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {n.tag}
-                      </span>
-                    </button>
-
-                    {/* Connecting line (not after last node) */}
-                    {i < 3 && (
-                      <div
-                        className="pipeline-connector"
-                        style={{
-                          flex: 1,
-                          height: 1,
-                          minWidth: 8,
-                          position: "relative",
-                          margin: "0 -1px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: 1,
-                            background: `linear-gradient(to right, ${dim(0.15)}, ${dim(0.08)})`,
-                          }}
-                        />
-                        {/* Animated pulse dot during simulation */}
-                        {simulating && simStep === i && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: -3,
-                              width: 7,
-                              height: 7,
-                              borderRadius: "50%",
-                              background: "#4ade80",
-                              boxShadow: "0 0 8px rgba(74,222,128,0.5)",
-                              animation: "pulse-travel 0.5s ease forwards",
-                            }}
-                          />
-                        )}
-                        {/* Arrow head */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            right: -1,
-                            top: -3,
-                            width: 0,
-                            height: 0,
-                            borderLeft: `5px solid ${dim(0.12)}`,
-                            borderTop: "3.5px solid transparent",
-                            borderBottom: "3.5px solid transparent",
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── Inspector Panel ─────────────────────────────── */}
-            <div
-              style={{
-                marginTop: "clamp(18px, 2.5vw, 30px)",
-                border: `1px solid ${dim(0.07)}`,
-                borderRadius: 10,
-                background: "#0a0a0a",
+                position: "relative",
+                borderRadius: 8,
+                background: "#070707",
+                border: `1px solid ${dim(0.06)}`,
                 overflow: "hidden",
               }}
             >
-              {/* Inspector header */}
+              {/* Screen backlight glow */}
               <div
+                ref={screenGlowRef}
+                aria-hidden
                 style={{
-                  padding: "clamp(10px, 1.4vw, 16px) clamp(14px, 2vw, 22px)",
-                  borderBottom: `1px solid ${dim(0.06)}`,
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "radial-gradient(ellipse 80% 55% at 50% 25%, rgba(255,255,255,0.03) 0%, transparent 100%)",
+                  pointerEvents: "none",
+                }}
+              />
+
+              {/* ── MacBook Workspace UI ──────────────────────────── */}
+              <div
+                ref={workspaceRef}
+                style={{
+                  position: "relative",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 8,
+                  flexDirection: "column",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span
-                    style={{
-                      ...mono,
-                      fontSize: "clamp(8px, 0.8vw, 10px)",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                      color: dim(0.3),
-                    }}
-                  >
-                    Node Inspector
-                  </span>
-                  <span
-                    style={{
-                      ...mono,
-                      fontSize: "clamp(8px, 0.8vw, 10px)",
-                      color: dim(0.5),
-                      padding: "2px 8px",
-                      borderRadius: 4,
-                      border: `1px solid ${dim(0.1)}`,
-                      background: dim(0.02),
-                    }}
-                  >
-                    Step {node.step} — {node.title}
-                  </span>
-                </div>
-                <span
-                  style={{
-                    ...mono,
-                    fontSize: "clamp(7px, 0.7vw, 9px)",
-                    color: dim(0.2),
-                    letterSpacing: "0.12em",
-                  }}
-                >
-                  {node.tag}
-                </span>
-              </div>
-
-              {/* Inspector body */}
-              <div
-                className="inspector-body"
-                style={{
-                  display: "grid",
-                  gap: 0,
-                }}
-              >
-                {/* Left: description */}
+                {/* ── Top macOS Window Bar ───────────────────────── */}
                 <div
-                  className="inspector-desc"
                   style={{
-                    padding: "clamp(14px, 2vw, 22px)",
-                    borderBottom: `1px solid ${dim(0.05)}`,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    padding: "9px 14px",
+                    borderBottom: `1px solid ${dim(0.07)}`,
+                    background: "rgba(255,255,255,0.018)",
                   }}
                 >
-                  <p
-                    style={{
-                      ...mono,
-                      fontSize: "clamp(7px, 0.7vw, 9px)",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                      color: dim(0.25),
-                      margin: "0 0 8px",
-                    }}
-                  >
-                    What Happens Here
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "clamp(12px, 1.2vw, 14px)",
-                      color: dim(0.65),
-                      lineHeight: 1.65,
-                      margin: 0,
-                    }}
-                  >
-                    {node.description}
-                  </p>
-                </div>
-
-                {/* Right: code blocks */}
-                <div
-                  className="inspector-data"
-                  style={{
-                    display: "grid",
-                    gap: 0,
-                  }}
-                >
-                  {/* Sample Input */}
-                  <div
-                    style={{
-                      padding: "clamp(12px, 1.6vw, 18px)",
-                      borderBottom: `1px solid ${dim(0.04)}`,
-                    }}
-                  >
-                    <p
+                  {/* Traffic lights + Studio title */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.18)",
+                          display: "inline-block",
+                        }}
+                      />
+                      <span
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.11)",
+                          display: "inline-block",
+                        }}
+                      />
+                      <span
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.11)",
+                          display: "inline-block",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="hidden md:inline"
                       style={{
                         ...mono,
-                        fontSize: "clamp(7px, 0.7vw, 8px)",
-                        letterSpacing: "0.18em",
+                        fontSize: 10,
+                        letterSpacing: "0.16em",
                         textTransform: "uppercase",
-                        color: dim(0.22),
-                        margin: "0 0 8px",
+                        color: dim(0.36),
                       }}
                     >
-                      Sample Input
-                    </p>
-                    <pre
-                      className="hide-scrollbar"
-                      style={{
-                        ...mono,
-                        fontSize: "clamp(9px, 0.85vw, 11px)",
-                        color: dim(0.52),
-                        lineHeight: 1.55,
-                        margin: 0,
-                        padding: "10px 12px",
-                        borderRadius: 6,
-                        background: dim(0.025),
-                        border: `1px solid ${dim(0.04)}`,
-                        overflowX: "auto",
-                        whiteSpace: "pre",
-                      }}
-                    >
-                      {node.sampleInput}
-                    </pre>
+                      Automation Studio
+                    </span>
                   </div>
 
-                  {/* Sample Output */}
+                  {/* Industry Switcher Pills */}
                   <div
+                    className="hide-scrollbar"
                     style={{
-                      padding: "clamp(12px, 1.6vw, 18px)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      overflowX: "auto",
+                      maxWidth: "100%",
                     }}
                   >
-                    <p
+                    {WORKFLOWS.map((w, idx) => {
+                      const active = idx === activeTab;
+                      return (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => handleTabSwitch(idx)}
+                          style={{
+                            ...mono,
+                            fontSize: 10,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            padding: "5px 12px",
+                            borderRadius: 999,
+                            border: `1px solid ${active ? dim(0.28) : dim(0.06)}`,
+                            background: active ? dim(0.08) : "transparent",
+                            color: active ? dim(0.92) : dim(0.42),
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          0{idx + 1} · {w.pillLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Run Flow Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => runFlow(true)}
+                    disabled={simulating}
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      padding: "5px 13px",
+                      borderRadius: 6,
+                      border: `1px solid ${
+                        simulating
+                          ? "rgba(74,222,128,0.4)"
+                          : simDone
+                            ? "rgba(74,222,128,0.28)"
+                            : dim(0.2)
+                      }`,
+                      background: simulating
+                        ? "rgba(74,222,128,0.08)"
+                        : dim(0.03),
+                      color: simulating || simDone ? "#4ade80" : dim(0.82),
+                      cursor: simulating ? "wait" : "pointer",
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <span
                       style={{
-                        ...mono,
-                        fontSize: "clamp(7px, 0.7vw, 8px)",
-                        letterSpacing: "0.18em",
-                        textTransform: "uppercase",
-                        color: dim(0.22),
-                        margin: "0 0 8px",
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: simulating || simDone ? "#4ade80" : dim(0.5),
+                        display: "inline-block",
+                      }}
+                    />
+                    {simulating ? "Running…" : simDone ? "Replay Flow" : "▶ Run Flow"}
+                  </button>
+                </div>
+
+                {/* ── Split Desktop Panes: Left (WORKFLOW) + Right (WhatsApp) ── */}
+                <div className="mac-split-body">
+                  {/* ══ LEFT PANE: WORKFLOW + INSPECTOR ═════════════ */}
+                  <div
+                    className="mac-left-pane"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(rgba(255,255,255,0.065) 1px, transparent 1px)",
+                      backgroundSize: "18px 18px",
+                      backgroundColor: "#090909",
+                      padding: "clamp(14px, 2vw, 22px)",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: 16,
+                    }}
+                  >
+                    {/* Pane top metadata */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 8,
                       }}
                     >
-                      {simDone && activeNode === 3 ? "Final Output" : "Sample Output"}
-                    </p>
-                    <pre
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 10,
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          color: dim(0.38),
+                        }}
+                      >
+                        WORKFLOW · {workflow.title}
+                      </span>
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 9,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: dim(0.28),
+                        }}
+                      >
+                        Click any node
+                      </span>
+                    </div>
+
+                    {/* Horizontal 5-Node Pipeline */}
+                    <div className="wf-nodes-row">
+                      {workflow.nodes.map((n, i) => {
+                        const isActive = i === activeNode;
+                        const isPulsing = simulating && i === simStep;
+                        const isPassed = simulating ? i <= simStep : i <= activeNode;
+
+                        return (
+                          <div key={`${workflow.id}-node-${n.step}`} className="wf-node-item">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!simulating) {
+                                  setActiveNode(i);
+                                  setSimDone(false);
+                                }
+                              }}
+                              className="wf-node-btn"
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "10px 6px",
+                                borderRadius: 10,
+                                border: `1px solid ${
+                                  isPulsing
+                                    ? "rgba(74,222,128,0.65)"
+                                    : isActive
+                                      ? dim(0.38)
+                                      : isPassed
+                                        ? dim(0.14)
+                                        : dim(0.07)
+                                }`,
+                                background: isPulsing
+                                  ? "rgba(74,222,128,0.08)"
+                                  : isActive
+                                    ? "rgba(255,255,255,0.06)"
+                                    : "#0d0d0d",
+                                boxShadow: isPulsing
+                                  ? "0 0 18px rgba(74,222,128,0.16)"
+                                  : isActive
+                                    ? "0 0 16px rgba(255,255,255,0.04)"
+                                    : "none",
+                                cursor: simulating ? "wait" : "pointer",
+                                transition: "transform 0.2s ease, border-color 0.2s ease, background 0.2s ease",
+                                transform: isActive || isPulsing ? "translateY(-2px)" : "translateY(0)",
+                                width: "100%",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 8,
+                                  letterSpacing: "0.14em",
+                                  color: isPulsing
+                                    ? "#4ade80"
+                                    : isActive
+                                      ? dim(0.65)
+                                      : dim(0.28),
+                                }}
+                              >
+                                0{n.step}
+                              </span>
+                              <span
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 7,
+                                  border: `1px solid ${
+                                    isPulsing ? "rgba(74,222,128,0.5)" : dim(0.14)
+                                  }`,
+                                  background: "rgba(255,255,255,0.03)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 13,
+                                  color: isPulsing ? "#4ade80" : dim(isActive ? 0.92 : 0.62),
+                                }}
+                              >
+                                {n.icon}
+                              </span>
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 9.5,
+                                  color: isActive ? dim(0.9) : dim(0.55),
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {n.shortLabel}
+                              </span>
+                            </button>
+
+                            {/* Connector line */}
+                            {i < 4 && (
+                              <div className="wf-connector" aria-hidden>
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: 1,
+                                    background:
+                                      simulating && simStep > i
+                                        ? "rgba(74,222,128,0.45)"
+                                        : isPassed && activeNode > i
+                                          ? dim(0.28)
+                                          : dim(0.1),
+                                    transition: "background 0.25s ease",
+                                  }}
+                                />
+                                {simulating && simStep === i && (
+                                  <span className="wf-pulse-dot" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Compact Step Inspector inside Left Pane */}
+                    <div
+                      style={{
+                        border: `1px solid ${dim(0.08)}`,
+                        borderRadius: 9,
+                        background: "rgba(12,12,12,0.92)",
+                        padding: "12px 14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              ...mono,
+                              fontSize: 9.5,
+                              color: "#4ade80",
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            0{currentNode.step} · {currentNode.title}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 9,
+                            color: dim(0.42),
+                            padding: "2px 7px",
+                            borderRadius: 4,
+                            border: `1px solid ${dim(0.08)}`,
+                            background: dim(0.02),
+                          }}
+                        >
+                          {currentNode.tag}
+                        </span>
+                      </div>
+
+                      <p
+                        style={{
+                          fontSize: 12.5,
+                          lineHeight: 1.55,
+                          color: dim(0.68),
+                          margin: 0,
+                        }}
+                      >
+                        {currentNode.description}
+                      </p>
+
+                      <div>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 8.5,
+                            letterSpacing: "0.16em",
+                            textTransform: "uppercase",
+                            color: dim(0.3),
+                            margin: "0 0 5px",
+                          }}
+                        >
+                          {currentNode.payloadLabel}
+                        </p>
+                        <pre
+                          className="hide-scrollbar"
+                          style={{
+                            ...mono,
+                            fontSize: 10.5,
+                            lineHeight: 1.48,
+                            color: dim(0.62),
+                            background: "rgba(255,255,255,0.025)",
+                            border: `1px solid ${dim(0.055)}`,
+                            borderRadius: 6,
+                            padding: "8px 10px",
+                            margin: 0,
+                            overflowX: "auto",
+                            whiteSpace: "pre",
+                          }}
+                        >
+                          {currentNode.payload}
+                        </pre>
+                      </div>
+
+                      {/* Outcome footer pill */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 8,
+                          paddingTop: 4,
+                          borderTop: `1px solid ${dim(0.05)}`,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#4ade80",
+                              display: "inline-block",
+                            }}
+                          />
+                          <span
+                            style={{
+                              ...mono,
+                              fontSize: 9.5,
+                              color: dim(0.58),
+                            }}
+                          >
+                            {workflow.outcomePill}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 9,
+                            color: dim(0.32),
+                          }}
+                        >
+                          {currentNode.impact}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ══ RIGHT PANE: DARK-MODE WHATSAPP DESKTOP ═══════ */}
+                  <div
+                    className="mac-right-pane"
+                    style={{
+                      background: "#0b0d0c",
+                      display: "flex",
+                      flexDirection: "column",
+                      minHeight: 390,
+                    }}
+                  >
+                    {/* WhatsApp Header */}
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderBottom: `1px solid ${dim(0.07)}`,
+                        background: "#111312",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background: "rgba(74,222,128,0.12)",
+                            border: "1px solid rgba(74,222,128,0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            ...mono,
+                            fontSize: 11,
+                            color: "#4ade80",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {workflow.contactInitials}
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 500,
+                              color: dim(0.88),
+                              margin: 0,
+                              lineHeight: 1.25,
+                            }}
+                          >
+                            {workflow.contactName}
+                          </p>
+                          <p
+                            style={{
+                              ...mono,
+                              fontSize: 9.5,
+                              color: "#4ade80",
+                              margin: "2px 0 0",
+                              opacity: 0.8,
+                            }}
+                          >
+                            {workflow.contactSubtitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 9,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: dim(0.32),
+                          border: `1px solid ${dim(0.08)}`,
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                        }}
+                      >
+                        WhatsApp
+                      </span>
+                    </div>
+
+                    {/* WhatsApp Message Thread */}
+                    <div
                       className="hide-scrollbar"
                       style={{
-                        ...mono,
-                        fontSize: "clamp(9px, 0.85vw, 11px)",
-                        color: simDone && activeNode === 3 ? "rgba(74,222,128,0.7)" : dim(0.52),
-                        lineHeight: 1.55,
-                        margin: 0,
-                        padding: "10px 12px",
-                        borderRadius: 6,
-                        background: simDone && activeNode === 3 ? "rgba(74,222,128,0.03)" : dim(0.025),
-                        border: `1px solid ${simDone && activeNode === 3 ? "rgba(74,222,128,0.12)" : dim(0.04)}`,
-                        overflowX: "auto",
-                        whiteSpace: "pre",
-                        transition: "all 0.3s ease",
+                        flex: 1,
+                        padding: "14px 12px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        overflowY: "auto",
+                        backgroundImage:
+                          "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)",
+                        backgroundSize: "14px 14px",
                       }}
                     >
-                      {node.sampleOutput}
-                    </pre>
+                      {visibleMessages.map((msg) => {
+                        if (msg.sender === "system") {
+                          return (
+                            <div
+                              key={msg.id}
+                              style={{
+                                alignSelf: "center",
+                                padding: "3px 9px",
+                                borderRadius: 6,
+                                background: "rgba(255,255,255,0.04)",
+                                border: `1px solid ${dim(0.06)}`,
+                                ...mono,
+                                fontSize: 9,
+                                color: dim(0.45),
+                                textAlign: "center",
+                              }}
+                            >
+                              {msg.text}
+                            </div>
+                          );
+                        }
+
+                        const isAI = msg.sender === "ai";
+                        return (
+                          <div
+                            key={msg.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: isAI ? "flex-end" : "flex-start",
+                              animation: "msg-fade-in 0.25s ease forwards",
+                            }}
+                          >
+                            <div
+                              style={{
+                                maxWidth: "86%",
+                                padding: "8px 11px",
+                                borderRadius: isAI
+                                  ? "10px 10px 2px 10px"
+                                  : "10px 10px 10px 2px",
+                                background: isAI ? "#12261b" : "#181a19",
+                                border: `1px solid ${
+                                  isAI
+                                    ? "rgba(74,222,128,0.18)"
+                                    : dim(0.07)
+                                }`,
+                              }}
+                            >
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  lineHeight: 1.48,
+                                  color: dim(0.86),
+                                  margin: 0,
+                                  whiteSpace: "pre-line",
+                                }}
+                              >
+                                {msg.text}
+                              </p>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "flex-end",
+                                  gap: 4,
+                                  marginTop: 4,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 8.5,
+                                    color: dim(0.34),
+                                  }}
+                                >
+                                  {msg.time}
+                                </span>
+                                {isAI && (
+                                  <span
+                                    style={{
+                                      fontSize: 9.5,
+                                      color: "#4ade80",
+                                      opacity: 0.85,
+                                    }}
+                                  >
+                                    ✓✓
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {simulating && simStep < 4 && (
+                        <div
+                          style={{
+                            alignSelf: "flex-end",
+                            ...mono,
+                            fontSize: 9.5,
+                            color: "rgba(74,222,128,0.7)",
+                            padding: "4px 8px",
+                          }}
+                        >
+                          AI Agent typing…
+                        </div>
+                      )}
+                    </div>
+
+                    {/* WhatsApp Bottom Input Bar */}
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        borderTop: `1px solid ${dim(0.07)}`,
+                        background: "#101211",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: "6px 11px",
+                          borderRadius: 999,
+                          background: "#171918",
+                          border: `1px solid ${dim(0.06)}`,
+                          ...mono,
+                          fontSize: 10.5,
+                          color: dim(0.3),
+                        }}
+                      >
+                        Automated reply active · WhatsApp Business API
+                      </div>
+                      <div
+                        aria-hidden
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: "rgba(74,222,128,0.14)",
+                          border: "1px solid rgba(74,222,128,0.3)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 11,
+                          color: "#4ade80",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ➤
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Impact pill footer */}
-              <div
-                style={{
-                  padding: "clamp(10px, 1.2vw, 14px) clamp(14px, 2vw, 22px)",
-                  borderTop: `1px solid ${dim(0.05)}`,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <div
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: "#4ade80",
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    ...mono,
-                    fontSize: "clamp(9px, 0.85vw, 11px)",
-                    letterSpacing: "0.08em",
-                    color: dim(0.55),
-                  }}
-                >
-                  {node.impact}
-                </span>
-              </div>
+              {/* ── End Workspace UI ──────────────────────────────── */}
             </div>
+            {/* ── End Inner Screen ────────────────────────────────── */}
+          </div>
+          {/* ── End MACBOOK LID ───────────────────────────────────── */}
+
+          {/* ── MACBOOK CHASSIS BASE + HINGE + NOTCH ──────────────── */}
+          <div
+            ref={baseRef}
+            style={{
+              width: "102%",
+              marginLeft: "-1%",
+              height: "clamp(14px, 2vw, 22px)",
+              background: "linear-gradient(to bottom, #2c2c2c 0%, #171717 100%)",
+              borderRadius: "2px 2px 12px 12px",
+              boxShadow: `0 18px 50px rgba(0,0,0,0.8), 0 0 0 1px ${dim(0.07)}`,
+              position: "relative",
+            }}
+          >
+            {/* Top hinge highlight */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "6%",
+                right: "6%",
+                height: 1,
+                background: dim(0.1),
+              }}
+            />
+            {/* Thumb notch / trackpad lip */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "15%",
+                height: "48%",
+                background: "#141414",
+                borderRadius: "0 0 6px 6px",
+                border: `1px solid ${dim(0.07)}`,
+                borderTop: "none",
+              }}
+            />
           </div>
         </div>
       </div>
 
-      {/* ── Disclaimer ─────────────────────────────────────── */}
-      <p
-        className="mx-auto mt-6 px-5 sm:px-8 md:px-14"
-        style={{
-          ...mono,
-          maxWidth: 1120,
-          fontSize: 9,
-          letterSpacing: "0.2em",
-          textTransform: "uppercase",
-          color: dim(0.17),
-        }}
+      {/* ── Bottom Caption ────────────────────────────────────────── */}
+      <div
+        className="relative z-10 mt-6 flex w-full items-center justify-between sm:mt-8"
+        style={{ maxWidth: 1140 }}
       >
-        Simulated demonstration · Not a live integration
-      </p>
+        <p
+          style={{
+            ...mono,
+            fontSize: 9.5,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: dim(0.24),
+            margin: 0,
+          }}
+        >
+          Simulated Infrastructure · Not a live integration
+        </p>
+        <p
+          className="hidden sm:block"
+          style={{
+            ...mono,
+            fontSize: 9.5,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: dim(0.2),
+            margin: 0,
+          }}
+        >
+          5-Step Live Pipeline
+        </p>
+      </div>
 
-      {/* ── Responsive CSS & animations (injected once) ───── */}
+      {/* ── Scoped Responsive Layout & Keyframes ──────────────────── */}
       <style jsx global>{`
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
+        @keyframes msg-fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        @keyframes pulse-travel {
-          0% { left: 0; opacity: 1; }
-          100% { left: calc(100% - 7px); opacity: 0; }
+        @keyframes wf-pulse-move {
+          0% {
+            left: 0;
+            opacity: 1;
+          }
+          100% {
+            left: calc(100% - 6px);
+            opacity: 0;
+          }
         }
 
         .hide-scrollbar {
@@ -1005,77 +1539,74 @@ export function AutomationSection() {
           display: none;
         }
 
-        /* Desktop: horizontal pipeline */
-        .pipeline-nodes {
-          flex-direction: row;
+        .mac-split-body {
+          display: grid;
+          grid-template-columns: 1.32fr 0.9fr;
+        }
+        .mac-left-pane {
+          border-right: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .wf-nodes-row {
+          display: flex;
+          align-items: center;
+          width: 100%;
+        }
+        .wf-node-item {
+          display: flex;
+          align-items: center;
+          flex: 1;
+          min-width: 0;
+        }
+        .wf-node-item:last-child {
+          flex: 0 1 auto;
+          min-width: 76px;
+        }
+        .wf-connector {
+          position: relative;
+          flex: 1;
+          min-width: 10px;
+          height: 10px;
+          display: flex;
           align-items: center;
         }
-        .pipeline-connector {
-          display: block;
+        .wf-pulse-dot {
+          position: absolute;
+          top: 2px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #4ade80;
+          box-shadow: 0 0 8px rgba(74, 222, 128, 0.65);
+          animation: wf-pulse-move 0.48s ease forwards;
         }
 
-        /* Inspector: 2 columns on desktop */
-        .inspector-body {
-          grid-template-columns: 1fr 1fr;
-        }
-        .inspector-desc {
-          border-right: 1px solid rgba(255,255,255,0.05);
-          border-bottom: none !important;
-        }
-        .inspector-data {
-          grid-template-columns: 1fr;
+        @media (max-width: 900px) {
+          .mac-split-body {
+            grid-template-columns: 1fr;
+          }
+          .mac-left-pane {
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          }
         }
 
-        /* ── Mobile ──────────────────────────── */
-        @media (max-width: 768px) {
-          .pipeline-nodes {
-            flex-direction: column !important;
-            align-items: stretch !important;
+        @media (max-width: 640px) {
+          .wf-nodes-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
           }
-          .pipeline-node-wrapper {
-            flex-direction: column !important;
-            align-items: center !important;
+          .wf-node-item,
+          .wf-node-item:last-child {
+            flex: unset;
+            min-width: 0;
           }
-          .pipeline-node-btn {
-            width: 100% !important;
-            flex-direction: row !important;
-            justify-content: flex-start !important;
-            gap: 12px !important;
-            padding: 12px 16px !important;
+          .wf-node-item:last-child {
+            grid-column: span 2;
           }
-          .pipeline-connector {
-            height: 20px !important;
-            width: 1px !important;
-            min-width: 1px !important;
-            margin: 0 auto !important;
-          }
-          .pipeline-connector > div:first-child {
-            width: 1px !important;
-            height: 100% !important;
-            top: 0 !important;
-            left: 50% !important;
-            right: auto !important;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.08)) !important;
-          }
-          .pipeline-connector > div:last-child {
-            /* arrow pointing down */
-            right: auto !important;
-            left: calc(50% - 3.5px) !important;
-            top: auto !important;
-            bottom: -1px !important;
-            border-left: 3.5px solid transparent !important;
-            border-right: 3.5px solid transparent !important;
-            border-top: 5px solid rgba(255,255,255,0.12) !important;
-            border-bottom: none !important;
-          }
-
-          /* Inspector: single column */
-          .inspector-body {
-            grid-template-columns: 1fr !important;
-          }
-          .inspector-desc {
-            border-right: none !important;
-            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+          .wf-connector {
+            display: none;
           }
         }
       `}</style>
