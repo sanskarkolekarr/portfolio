@@ -435,145 +435,143 @@ const WORKFLOWS: IndustryWorkflow[] = [
 const mono: React.CSSProperties = { fontFamily: "var(--font-mono, monospace)" };
 const dim = (a: number) => `rgba(255,255,255,${a})`;
 
+const STEP_SCROLL_TARGETS = [0.24, 0.42, 0.58, 0.74, 0.92] as const;
+
+function progressToStep(p: number): number {
+  if (p < 0.34) return 0;
+  if (p < 0.5) return 1;
+  if (p < 0.66) return 2;
+  if (p < 0.82) return 3;
+  return 4;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
 export function AutomationSection() {
   const [activeTab, setActiveTab] = useState(0);
-  const [activeNode, setActiveNode] = useState(4); // default full conversation visible on arrival
-  const [simulating, setSimulating] = useState(false);
-  const [simStep, setSimStep] = useState(-1);
-  const [simDone, setSimDone] = useState(false);
+  const [activeNode, setActiveNode] = useState(0);
 
   const sectionRef = useRef<HTMLElement>(null);
   const lidRef = useRef<HTMLDivElement>(null);
   const screenGlowRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
-  const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stRef = useRef<{ start: number; end: number } | null>(null);
+  const lastStepRef = useRef(0);
 
   const workflow = WORKFLOWS[activeTab];
   const currentNode = workflow.nodes[activeNode];
 
-  /* ── Cleanup simulation timer on unmount ───────────────────────── */
-  useEffect(() => {
-    return () => {
-      if (simTimerRef.current) clearInterval(simTimerRef.current);
-    };
+  /* ── Click node -> jump scroll & active step to that node ─────── */
+  const goToStep = useCallback((idx: number) => {
+    lastStepRef.current = idx;
+    setActiveNode(idx);
+
+    const st = stRef.current;
+    if (st && st.end > st.start) {
+      const targetY = st.start + (st.end - st.start) * STEP_SCROLL_TARGETS[idx];
+      window.scrollTo({ top: targetY, behavior: "smooth" });
+    }
   }, []);
 
-  /* ── Run sequential 5-node simulation ──────────────────────────── */
-  const runFlow = useCallback(
-    (startImmediately = true) => {
-      if (simTimerRef.current) clearInterval(simTimerRef.current);
-      if (!startImmediately) return;
+  /* ── Switch workflow tab (steps still follow scroll / click) ───── */
+  const handleTabSwitch = useCallback((idx: number) => {
+    setActiveTab(idx);
+  }, []);
 
-      setSimulating(true);
-      setSimDone(false);
-      setSimStep(0);
-      setActiveNode(0);
-
-      let step = 0;
-      simTimerRef.current = setInterval(() => {
-        step += 1;
-        if (step < 5) {
-          setSimStep(step);
-          setActiveNode(step);
-        } else {
-          if (simTimerRef.current) clearInterval(simTimerRef.current);
-          simTimerRef.current = null;
-          setSimStep(-1);
-          setSimDone(true);
-          setActiveNode(4);
-          setSimulating(false);
-        }
-      }, 480);
-    },
-    [],
-  );
-
-  /* ── Switch workflow tab + replay sequence ─────────────────────── */
-  const handleTabSwitch = useCallback(
-    (idx: number) => {
-      if (idx === activeTab && !simulating) {
-        runFlow(true);
-        return;
-      }
-      setActiveTab(idx);
-      runFlow(true);
-    },
-    [activeTab, simulating, runFlow],
-  );
-
-  /* ── GSAP MacBook rise & lid-opening entrance ──────────────────── */
+  /* ── GSAP scroll-driven MacBook reveal + 5-step progression ────── */
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let ctx: { revert: () => void } | undefined;
+    let mm: { revert: () => void } | undefined;
 
     (async () => {
       const { default: gsap } = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       gsap.registerPlugin(ScrollTrigger);
 
-      ctx = gsap.context(() => {
-        if (reduced) {
-          gsap.set(lidRef.current, { rotateX: -2, opacity: 1 });
-          gsap.set(baseRef.current, { opacity: 1, y: 0 });
-          gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 1 });
-          return;
-        }
+      const matchMedia = gsap.matchMedia();
+      mm = matchMedia;
 
-        gsap.set(lidRef.current, { rotateX: -72, opacity: 0.25 });
-        gsap.set(baseRef.current, { opacity: 0, y: 28 });
+      if (reduced) {
+        gsap.set(lidRef.current, { rotateX: -2, opacity: 1 });
+        gsap.set(baseRef.current, { opacity: 1, y: 0 });
+        gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 1 });
+        return;
+      }
+
+      /* Desktop: pin section and advance steps 01 -> 05 strictly on scroll */
+      matchMedia.add("(min-width: 900px)", () => {
+        gsap.set(lidRef.current, { rotateX: -65, opacity: 0.35 });
+        gsap.set(baseRef.current, { opacity: 0, y: 24 });
         gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 0 });
 
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: "top 72%",
-            toggleActions: "play none none none",
+            pin: true,
+            scrub: 0.5,
+            start: "top top",
+            end: "+=280%",
+            onRefresh: (self) => {
+              stRef.current = { start: self.start, end: self.end };
+            },
+            onUpdate: (self) => {
+              stRef.current = { start: self.start, end: self.end };
+              const nextStep = progressToStep(self.progress);
+              if (nextStep !== lastStepRef.current) {
+                lastStepRef.current = nextStep;
+                setActiveNode(nextStep);
+              }
+            },
           },
         });
 
-        tl.to(baseRef.current, {
-          opacity: 1,
-          y: 0,
-          duration: 0.7,
-          ease: "power3.out",
-        })
-          .to(
-            lidRef.current,
-            {
-              rotateX: -2,
-              opacity: 1,
-              duration: 1.05,
-              ease: "power3.out",
-            },
-            "<0.08",
-          )
-          .to(
-            screenGlowRef.current,
-            {
-              opacity: 1,
-              duration: 0.45,
-              ease: "power2.out",
-            },
-            "-=0.45",
-          )
-          .to(
-            workspaceRef.current,
-            {
-              opacity: 1,
-              duration: 0.5,
-              ease: "power2.out",
-            },
-            "-=0.35",
-          );
-      }, sectionRef);
+        /* 0 -> 0.18: MacBook base rises & lid opens */
+        tl.to(baseRef.current, { opacity: 1, y: 0, duration: 0.12, ease: "power2.out" }, 0)
+          .to(lidRef.current, { rotateX: -2, opacity: 1, duration: 0.16, ease: "power2.out" }, 0)
+          .to(screenGlowRef.current, { opacity: 1, duration: 0.08 }, 0.09)
+          .to(workspaceRef.current, { opacity: 1, duration: 0.08 }, 0.1)
+          /* Hold timeline to 1.0 so scrub spans the 5 workflow steps */
+          .to({}, { duration: 0.82 }, 0.18);
+
+        if (tl.scrollTrigger) {
+          stRef.current = {
+            start: tl.scrollTrigger.start,
+            end: tl.scrollTrigger.end,
+          };
+        }
+      });
+
+      /* Mobile / tablet: no pin (tall stacked layout), advance steps on scroll */
+      matchMedia.add("(max-width: 899px)", () => {
+        gsap.set(lidRef.current, { rotateX: -2, opacity: 1 });
+        gsap.set(baseRef.current, { opacity: 1, y: 0 });
+        gsap.set([screenGlowRef.current, workspaceRef.current], { opacity: 1 });
+
+        const st = ScrollTrigger.create({
+          trigger: sectionRef.current,
+          start: "top 40%",
+          end: "bottom 65%",
+          onRefresh: (self) => {
+            stRef.current = { start: self.start, end: self.end };
+          },
+          onUpdate: (self) => {
+            stRef.current = { start: self.start, end: self.end };
+            const nextStep = progressToStep(self.progress);
+            if (nextStep !== lastStepRef.current) {
+              lastStepRef.current = nextStep;
+              setActiveNode(nextStep);
+            }
+          },
+        });
+
+        stRef.current = { start: st.start, end: st.end };
+      });
     })();
 
     return () => {
-      ctx?.revert();
+      mm?.revert();
     };
   }, []);
 
@@ -586,10 +584,10 @@ export function AutomationSection() {
     <section
       ref={sectionRef}
       id="automation"
-      className="relative flex w-full flex-col items-center justify-center overflow-hidden"
+      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden"
       style={{
         background: "#080808",
-        padding: "clamp(64px, 8vw, 110px) clamp(12px, 3vw, 48px)",
+        padding: "clamp(28px, 4vw, 56px) clamp(12px, 3vw, 48px)",
       }}
     >
       {/* Subtle radial ambient glow */}
@@ -821,11 +819,10 @@ export function AutomationSection() {
                     })}
                   </div>
 
-                  {/* Run Flow Trigger */}
+                  {/* Step Progress + Reset Trigger */}
                   <button
                     type="button"
-                    onClick={() => runFlow(true)}
-                    disabled={simulating}
+                    onClick={() => goToStep(activeNode < 4 ? activeNode + 1 : 0)}
                     style={{
                       ...mono,
                       fontSize: 10,
@@ -834,17 +831,13 @@ export function AutomationSection() {
                       padding: "5px 13px",
                       borderRadius: 6,
                       border: `1px solid ${
-                        simulating
-                          ? "rgba(74,222,128,0.4)"
-                          : simDone
-                            ? "rgba(74,222,128,0.28)"
-                            : dim(0.2)
+                        activeNode === 4
+                          ? "rgba(74,222,128,0.32)"
+                          : dim(0.2)
                       }`,
-                      background: simulating
-                        ? "rgba(74,222,128,0.08)"
-                        : dim(0.03),
-                      color: simulating || simDone ? "#4ade80" : dim(0.82),
-                      cursor: simulating ? "wait" : "pointer",
+                      background: dim(0.03),
+                      color: activeNode === 4 ? "#4ade80" : dim(0.82),
+                      cursor: "pointer",
                       whiteSpace: "nowrap",
                       display: "flex",
                       alignItems: "center",
@@ -857,11 +850,13 @@ export function AutomationSection() {
                         width: 5,
                         height: 5,
                         borderRadius: "50%",
-                        background: simulating || simDone ? "#4ade80" : dim(0.5),
+                        background: activeNode === 4 ? "#4ade80" : dim(0.5),
                         display: "inline-block",
                       }}
                     />
-                    {simulating ? "Running…" : simDone ? "Replay Flow" : "▶ Run Flow"}
+                    {activeNode === 4
+                      ? "↺ Step 01"
+                      : `Step 0${activeNode + 1} / 05 · Next →`}
                   </button>
                 </div>
 
@@ -920,19 +915,13 @@ export function AutomationSection() {
                     <div className="wf-nodes-row">
                       {workflow.nodes.map((n, i) => {
                         const isActive = i === activeNode;
-                        const isPulsing = simulating && i === simStep;
-                        const isPassed = simulating ? i <= simStep : i <= activeNode;
+                        const isPassed = i <= activeNode;
 
                         return (
                           <div key={`${workflow.id}-node-${n.step}`} className="wf-node-item">
                             <button
                               type="button"
-                              onClick={() => {
-                                if (!simulating) {
-                                  setActiveNode(i);
-                                  setSimDone(false);
-                                }
-                              }}
+                              onClick={() => goToStep(i)}
                               className="wf-node-btn"
                               style={{
                                 display: "flex",
@@ -942,27 +931,23 @@ export function AutomationSection() {
                                 padding: "10px 6px",
                                 borderRadius: 10,
                                 border: `1px solid ${
-                                  isPulsing
-                                    ? "rgba(74,222,128,0.65)"
-                                    : isActive
-                                      ? dim(0.38)
-                                      : isPassed
-                                        ? dim(0.14)
-                                        : dim(0.07)
+                                  isActive
+                                    ? "rgba(74,222,128,0.6)"
+                                    : isPassed
+                                      ? dim(0.18)
+                                      : dim(0.07)
                                 }`,
-                                background: isPulsing
-                                  ? "rgba(74,222,128,0.08)"
-                                  : isActive
-                                    ? "rgba(255,255,255,0.06)"
+                                background: isActive
+                                  ? "rgba(74,222,128,0.06)"
+                                  : isPassed
+                                    ? "rgba(255,255,255,0.03)"
                                     : "#0d0d0d",
-                                boxShadow: isPulsing
-                                  ? "0 0 18px rgba(74,222,128,0.16)"
-                                  : isActive
-                                    ? "0 0 16px rgba(255,255,255,0.04)"
-                                    : "none",
-                                cursor: simulating ? "wait" : "pointer",
+                                boxShadow: isActive
+                                  ? "0 0 18px rgba(74,222,128,0.14)"
+                                  : "none",
+                                cursor: "pointer",
                                 transition: "transform 0.2s ease, border-color 0.2s ease, background 0.2s ease",
-                                transform: isActive || isPulsing ? "translateY(-2px)" : "translateY(0)",
+                                transform: isActive ? "translateY(-2px)" : "translateY(0)",
                                 width: "100%",
                               }}
                             >
@@ -971,10 +956,10 @@ export function AutomationSection() {
                                   ...mono,
                                   fontSize: 8,
                                   letterSpacing: "0.14em",
-                                  color: isPulsing
+                                  color: isActive
                                     ? "#4ade80"
-                                    : isActive
-                                      ? dim(0.65)
+                                    : isPassed
+                                      ? dim(0.55)
                                       : dim(0.28),
                                 }}
                               >
@@ -986,14 +971,14 @@ export function AutomationSection() {
                                   height: 28,
                                   borderRadius: 7,
                                   border: `1px solid ${
-                                    isPulsing ? "rgba(74,222,128,0.5)" : dim(0.14)
+                                    isActive ? "rgba(74,222,128,0.5)" : dim(0.14)
                                   }`,
                                   background: "rgba(255,255,255,0.03)",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
                                   fontSize: 13,
-                                  color: isPulsing ? "#4ade80" : dim(isActive ? 0.92 : 0.62),
+                                  color: isActive ? "#4ade80" : dim(isPassed ? 0.8 : 0.45),
                                 }}
                               >
                                 {n.icon}
@@ -1002,7 +987,7 @@ export function AutomationSection() {
                                 style={{
                                   ...mono,
                                   fontSize: 9.5,
-                                  color: isActive ? dim(0.9) : dim(0.55),
+                                  color: isActive ? dim(0.95) : isPassed ? dim(0.7) : dim(0.45),
                                   whiteSpace: "nowrap",
                                 }}
                               >
@@ -1018,17 +1003,12 @@ export function AutomationSection() {
                                     width: "100%",
                                     height: 1,
                                     background:
-                                      simulating && simStep > i
+                                      activeNode > i
                                         ? "rgba(74,222,128,0.45)"
-                                        : isPassed && activeNode > i
-                                          ? dim(0.28)
-                                          : dim(0.1),
+                                        : dim(0.1),
                                     transition: "background 0.25s ease",
                                   }}
                                 />
-                                {simulating && simStep === i && (
-                                  <span className="wf-pulse-dot" />
-                                )}
                               </div>
                             )}
                           </div>
@@ -1365,17 +1345,17 @@ export function AutomationSection() {
                         );
                       })}
 
-                      {simulating && simStep < 4 && (
+                      {activeNode < 4 && (
                         <div
                           style={{
-                            alignSelf: "flex-end",
+                            alignSelf: "center",
                             ...mono,
-                            fontSize: 9.5,
-                            color: "rgba(74,222,128,0.7)",
+                            fontSize: 9,
+                            color: dim(0.35),
                             padding: "4px 8px",
                           }}
                         >
-                          AI Agent typing…
+                          Scroll or click next node to continue…
                         </div>
                       )}
                     </div>
