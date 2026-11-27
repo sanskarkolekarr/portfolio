@@ -457,11 +457,20 @@ export function AutomationSection() {
   const screenGlowRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const stRef = useRef<{ start: number; end: number } | null>(null);
   const lastStepRef = useRef(0);
 
   const workflow = WORKFLOWS[activeTab];
   const currentNode = workflow.nodes[activeNode];
+
+  /* Keep WhatsApp thread scrolled to newest revealed message */
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [activeNode, activeTab]);
 
   /* ── Click node -> jump scroll & active step to that node ─────── */
   const goToStep = useCallback((idx: number) => {
@@ -1161,9 +1170,10 @@ export function AutomationSection() {
                       <p
                         style={{
                           fontSize: 12.5,
-                          lineHeight: 1.55,
+                          lineHeight: 1.5,
                           color: dim(0.68),
                           margin: 0,
+                          minHeight: 38,
                         }}
                       >
                         {currentNode.description}
@@ -1187,14 +1197,15 @@ export function AutomationSection() {
                           style={{
                             ...mono,
                             fontSize: 10.5,
-                            lineHeight: 1.48,
+                            lineHeight: 1.45,
                             color: dim(0.62),
                             background: "rgba(255,255,255,0.025)",
                             border: `1px solid ${dim(0.055)}`,
                             borderRadius: 6,
                             padding: "8px 10px",
                             margin: 0,
-                            overflowX: "auto",
+                            height: 100,
+                            overflow: "auto",
                             whiteSpace: "pre",
                           }}
                         >
@@ -1254,7 +1265,7 @@ export function AutomationSection() {
                       background: "#0b0d0c",
                       display: "flex",
                       flexDirection: "column",
-                      minHeight: 390,
+                      minHeight: 0,
                     }}
                   >
                     {/* WhatsApp Header */}
@@ -1332,6 +1343,7 @@ export function AutomationSection() {
 
                     {/* WhatsApp Message Thread */}
                     <div
+                      ref={chatScrollRef}
                       className="hide-scrollbar"
                       style={{
                         flex: 1,
@@ -1709,6 +1721,17 @@ export function AutomationSection() {
         .mac-split-body {
           display: grid;
           grid-template-columns: 1.32fr 0.9fr;
+        }
+        @media (min-width: 900px) {
+          .mac-split-body {
+            height: clamp(390px, 53vh, 460px);
+          }
+          .mac-left-pane,
+          .mac-right-pane {
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+          }
         }
         .mac-left-pane {
           border-right: 1px solid rgba(255, 255, 255, 0.07);
